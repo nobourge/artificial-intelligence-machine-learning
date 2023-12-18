@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from main_completed import NeuralNetwork 
+from main import NeuralNetwork 
 
 @pytest.fixture
 def neural_network():
@@ -25,18 +25,18 @@ def test_mse_loss():
     nn = NeuralNetwork(1, 1, 1)
     assert nn.mse_loss(np.array([1, 1]), np.array([0.5, 0.5])) == 0.25
 
-def test_forward(neural_network, sample_data):
+def test_forward(neural_network, sample_data): #todo
     X, _ = sample_data
     neural_network.forward(X)
     assert neural_network.model_output.shape == (10, 2)
 
-def test_backward(neural_network, sample_data):
+def test_backward(neural_network, sample_data): #todo
     X, y_one_hot = sample_data
     neural_network.forward(X)
     loss = neural_network.backward(X, y_one_hot)
     assert isinstance(loss, float)
 
-def test_predict(neural_network, sample_data):
+def test_predict(neural_network, sample_data): #todo
     X, _ = sample_data
     predictions = neural_network.predict(X)
     assert predictions.shape == (10,)

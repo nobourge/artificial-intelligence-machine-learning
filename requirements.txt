@@ -1,0 +1,5 @@
+numpy
+matplotlib
+tensorflow  # or pytorch==[version]
+scikit-learn  # if used
+pytest
