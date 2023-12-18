@@ -71,33 +71,53 @@ class NeuralNetwork:
         """
         return np.tanh(x)
 
-    def softmax(self, x):
+    def softmax(self, 
+                x : np.ndarray
+                , epsilon=1e-12
+                ) -> np.ndarray:
         """
         Softmax activation function.
-
-        Parameters:
-        x (ndarray): Input array.
 
         Returns:
         ndarray: Output after applying the softmax function.
         """
+        # subtract the maximum value in the input array x 
+        # before taking the exponential. 
+        # This prevents overflow by ensuring 
+        # the argument of np.exp is always non-positive 
         exp_x = np.exp(x - np.max(x))
-        return exp_x / exp_x.sum(axis=1, keepdims=True)
+        # but underflow can still occur 
+        # if x is a large negative number, 
+        # resulting in exp_x becoming zero.
 
-    def mse_loss(self, y_true, y_pred):
+        # One potential issue is that 
+        # if all values in a row of x are very large 
+        # negative numbers, 
+        # exp_x will be an array of zeros, 
+        # and summing these will result in 
+        # zero - leading to a division by zero and hence 
+        # a NaN in the output.
+
+        sum_exp_x = np.sum(exp_x, axis=1, keepdims=True)
+        # return exp_x / exp_x.sum(axis=1, keepdims=True)
+        return exp_x / np.maximum(sum_exp_x, epsilon)  # Use maximum to prevent division by zero
+
+
+    def mse_loss(self, 
+                 y_true : np.ndarray, # true labels
+                 y_pred : np.ndarray # predicted labels
+                 ) -> float:
         """
         Calculates the Mean Squared Error loss.
-
-        Parameters:
-        y_true (ndarray): True labels.
-        y_pred (ndarray): Predicted labels.
 
         Returns:
         float: Computed MSE loss.
         """
         return ((y_true - y_pred) ** 2).mean()
 
-    def forward(self, X: np.ndarray) -> np.ndarray:  # input data
+    def forward(self, 
+                X: np.ndarray # input data
+                ) -> np.ndarray:
         """
         Performs the forward pass
         of the neural network.
@@ -124,7 +144,7 @@ class NeuralNetwork:
         X: np.ndarray,  # input data
         y_one_hot: np.ndarray,  # one-hot encoded labels
         learning_rate=0.01,
-    ):
+    ) -> float:
         """
         Performs the backward pass
         (backpropagation) and
@@ -150,19 +170,22 @@ class NeuralNetwork:
         # Calculate the Mean Squared Error loss
 
         loss = self.mse_loss(y_one_hot, self.model_output)
+        print("loss : ", loss)
 
         # Rétropropagation
         # Output layer error is the difference between predicted and true values
         output_error = y_one_hot - self.model_output
 
+        # Calculate hidden layer error (backpropagated error)
+        # hidden_output_ =  1 - self.hidden_output**2  
+        #L’erreur de la couche intermédiaire est donnée par 𝑒ℎ = (𝑒_𝑜 × 𝑊_𝑜^𝑇 ) ∗ 𝑦ℎ ∗ (1 − 𝑦ℎ)
+        weights_hidden_output_transpose = self.weights_hidden_output.T
+
+        hidden_error = output_error.dot(weights_hidden_output_transpose) * self.hidden_output * (1 - self.hidden_output)
         # gradient is the derivative of the loss function (MSE) and serves to update the weights
         # Calculate gradient for weights between hidden and output layer
         d_weights_hidden_output = self.hidden_output.T.dot(output_error)
 
-        # Calculate hidden layer error (backpropagated error)
-        hidden_error = output_error.dot(self.weights_hidden_output.T) * (
-            1 - self.hidden_output**2
-        )
 
         # Calculating gradient for weights between input and hidden layer
         d_weights_input_hidden = X.T.dot(hidden_error)
@@ -173,15 +196,15 @@ class NeuralNetwork:
 
         return loss
 
-    def train(self, X, y_one_hot, epochs=100, learning_rate=0.01):
+    def train(
+        self,
+        X: np.ndarray,  # input data
+        y_one_hot: np.ndarray,  # one-hot encoded labels
+        epochs=100,  # number of training epochs
+        learning_rate=0.01,  # learning rate
+    ):
         """
         Trains the neural network.
-
-        Parameters:
-        X (ndarray): Training data.
-        y_one_hot (ndarray): One-hot encoded labels.
-        epochs (int): Number of training epochs.
-        learning_rate (float): Learning rate.
         """
         for epoch in range(epochs):
             self.forward(X)
@@ -202,16 +225,15 @@ class NeuralNetwork:
         self.forward(X)
         return np.argmax(self.model_output, axis=1)
 
-    def visualize_prediction(self, X, y_true, index):
+    def visualize_prediction(self, 
+                             X : np.ndarray,  # input data
+                             y_true : np.ndarray,  # one-hot encoded labels
+                             index : int # index of the data point to visualize
+                             ):
         """
         Visualizes the prediction for a single data point.
-
-        Parameters:
-        X (ndarray): Data for prediction.
-        y_true (ndarray): True labels.
-        index (int): Index of the data point to visualize.
         """
-        input_data = X[index, :].reshape(28, 28)
+        input_data = X[index, :].reshape(28, 28) # 28x28 image
 
         predicted_label = self.predict(X[index : index + 1])[0]
 
@@ -221,29 +243,72 @@ class NeuralNetwork:
         )
         plt.show()
 
-    def confusion_matrix(self, X, y_true):
+    def visualize_predictions(self, X, y_true, num_predictions=10):
+        """
+        Visualizes the predictions for the first
+        num_predictions data points
+        into one plot.
+
+        Parameters:
+        X (ndarray): Data for prediction.
+        y_true (ndarray): True labels.
+        num_predictions (int): Number of predictions to visualize.
+        """
+        predictions = self.predict(X[:num_predictions])
+        images = X[:num_predictions, :].reshape(num_predictions, 28, 28)
+        true_labels = np.argmax(y_true[:num_predictions], axis=1)
+
+        plt.figure(figsize=(12, 12))
+
+        for i in range(num_predictions):
+            plt.subplot(5, 2, i + 1)
+            plt.imshow(images[i], cmap="gray")
+            plt.title(f"Prediction: {predictions[i]}, True Label: {true_labels[i]}")
+            plt.axis("off")
+
+        plt.tight_layout()
+        plt.show()
+
+
+    def confusion_matrix(
+        self,
+        X: np.ndarray,  # input data
+        y_true: np.ndarray,  # one-hot encoded true labels
+    ):
+        # Predict the labels for the given input data using the model
         y_pred = self.predict(X)
 
+        # Number of classes in the dataset, here assumed to be 10
         num_classes = 10
+
+        # Initialize a confusion matrix with zeros, of size num_classes x num_classes
         cm = np.zeros((num_classes, num_classes), dtype=int)
 
+        # Populate the confusion matrix by comparing actual and predicted labels
         for true_label, pred_label in zip(np.argmax(y_true, axis=1), y_pred):
             cm[true_label, pred_label] += 1
 
+        # Create a plot to visualize the confusion matrix
         plt.figure(figsize=(10, 8))
         plt.imshow(cm, interpolation="nearest", cmap=plt.cm.Blues)
         plt.title("Confusion Matrix")
         plt.colorbar()
+
+        # Set the tick marks for the x and y axes
         tick_marks = np.arange(num_classes)
         plt.xticks(tick_marks, range(num_classes))
         plt.yticks(tick_marks, range(num_classes))
-        plt.xlabel("Predicted")
-        plt.ylabel("True")
 
+        # Label the axes with appropriate names
+        plt.xlabel("Predicted Labels")
+        plt.ylabel("True Labels")
+
+        # Annotate each cell of the matrix with the count of occurrences
         for i in range(num_classes):
             for j in range(num_classes):
                 plt.text(j, i, str(cm[i, j]), ha="center", va="center", color="black")
 
+        # Display the plot
         plt.show()
 
 
@@ -261,4 +326,5 @@ if __name__ == "__main__":
 
     X_test, y_test = load_mnist_data("mnist_test.csv/mnist_test.csv")
     nn.confusion_matrix(X_test, y_test)
-    nn.visualize_prediction(X_test, y_test, 10)
+    # nn.visualize_prediction(X_test, y_test, 10)
+    nn.visualize_predictions(X_test, y_test, 10)
