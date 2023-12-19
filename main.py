@@ -71,53 +71,69 @@ class NeuralNetwork:
         """
         return np.tanh(x)
 
-    def softmax(self, 
-                x : np.ndarray
-                , epsilon=1e-12
-                ) -> np.ndarray:
+    def softmax(self, x: np.ndarray, epsilon=1e-12) -> np.ndarray:
         """
         Softmax activation function.
 
         Returns:
         ndarray: Output after applying the softmax function.
         """
-        # subtract the maximum value in the input array x 
-        # before taking the exponential. 
-        # This prevents overflow by ensuring 
-        # the argument of np.exp is always non-positive 
+        # subtract the maximum value in the input array x
+        # before taking the exponential.
+        # This prevents overflow by ensuring
+        # the argument of np.exp is always non-positive
         exp_x = np.exp(x - np.max(x))
-        # but underflow can still occur 
-        # if x is a large negative number, 
+        # but underflow can still occur
+        # if x is a large negative number,
         # resulting in exp_x becoming zero.
 
-        # One potential issue is that 
-        # if all values in a row of x are very large 
-        # negative numbers, 
-        # exp_x will be an array of zeros, 
-        # and summing these will result in 
-        # zero - leading to a division by zero and hence 
+        # One potential issue is that
+        # if all values in a row of x are very large
+        # negative numbers,
+        # exp_x will be an array of zeros,
+        # and summing these will result in
+        # zero - leading to a division by zero and hence
         # a NaN in the output.
 
         sum_exp_x = np.sum(exp_x, axis=1, keepdims=True)
         # return exp_x / exp_x.sum(axis=1, keepdims=True)
-        return exp_x / np.maximum(sum_exp_x, epsilon)  # Use maximum to prevent division by zero
+        return exp_x / np.maximum(
+            sum_exp_x, epsilon
+        )  # Use maximum to prevent division by zero
 
-
-    def mse_loss(self, 
-                 y_true : np.ndarray, # true labels
-                 y_pred : np.ndarray # predicted labels
-                 ) -> float:
+    def mse_loss(
+        self, y_true: np.ndarray, y_pred: np.ndarray  # true labels  # predicted labels
+    ) -> float:
         """
         Calculates the Mean Squared Error loss.
+        prediction error between the probability vector ytrue and the predicted vector y_pred
 
         Returns:
         float: Computed MSE loss.
         """
-        return ((y_true - y_pred) ** 2).mean()
+        # return (np.subtract(y_true,y_pred) ** 2).mean()
+        return np.divide(np.sum((np.subtract(y_true, y_pred) ** 2)), y_true.shape[0])
 
-    def forward(self, 
-                X: np.ndarray # input data
-                ) -> np.ndarray:
+    def get_output_error(
+        self,
+        #  y_one_hot : np.ndarray # one-hot encoded labels,
+        #  model_output : np.ndarray # predicted labels
+        y_true: np.ndarray,  # true labels
+        y_pred: np.ndarray,  # predicted labels
+    ) -> np.ndarray:
+        """
+        Calculates the output error.
+
+        Returns:
+        ndarray: Output error.
+        """
+        # Output layer error is the difference between predicted and true values
+        # y_one_hot.shape[0] is the number of rows in y_one_hot
+        # output_error = np.substract(y_one_hot, self.model_output) / y_one_hot.shape[0]
+        output_error = np.divide(np.subtract(y_true, y_pred), y_true.shape[0])
+        return output_error
+
+    def forward(self, X: np.ndarray) -> np.ndarray:  # input data
         """
         Performs the forward pass
         of the neural network.
@@ -152,47 +168,39 @@ class NeuralNetwork:
         Returns:
         float: Computed loss.
         """
-        # # Calcul de la MSE
-        # # ...
-        # loss = None
-
-        # # Rétropropagation
-        # # ...
-        # output_error = None
-        # hidden_error = None
-
-        # # Mise à jour des poids
-        # # ...
-        # self.weights_hidden_output = None
-        # self.weights_input_hidden = None
-
-        # return loss
         # Calculate the Mean Squared Error loss
 
         loss = self.mse_loss(y_one_hot, self.model_output)
         print("loss : ", loss)
 
         # Rétropropagation
-        # Output layer error is the difference between predicted and true values
-        output_error = y_one_hot - self.model_output
+        output_error = self.get_output_error(y_one_hot, self.model_output)
 
         # Calculate hidden layer error (backpropagated error)
-        # hidden_output_ =  1 - self.hidden_output**2  
-        #L’erreur de la couche intermédiaire est donnée par 𝑒ℎ = (𝑒_𝑜 × 𝑊_𝑜^𝑇 ) ∗ 𝑦ℎ ∗ (1 − 𝑦ℎ)
-        weights_hidden_output_transpose = self.weights_hidden_output.T
+        # hidden_output_ =  1 - self.hidden_output**2
+        # L’erreur de la couche intermédiaire est donnée par 𝑒ℎ = (𝑒_𝑜 × 𝑊_𝑜^𝑇 ) ∗ 𝑦ℎ ∗ (1 − 𝑦ℎ)
+        # weights_hidden_output_transpose = self.weights_hidden_output.T
+        weights_hidden_output_transpose = np.transpose(self.weights_hidden_output)
 
-        hidden_error = output_error.dot(weights_hidden_output_transpose) * self.hidden_output * (1 - self.hidden_output)
+        hidden_error = (
+            np.dot(output_error, weights_hidden_output_transpose)
+            * self.hidden_output
+            * (1 - self.hidden_output)
+        )
         # gradient is the derivative of the loss function (MSE) and serves to update the weights
-        # Calculate gradient for weights between hidden and output layer
-        d_weights_hidden_output = self.hidden_output.T.dot(output_error)
-
 
         # Calculating gradient for weights between input and hidden layer
-        d_weights_input_hidden = X.T.dot(hidden_error)
+        x_transpose = np.transpose(X)
+        d_weights_input_hidden = np.dot(x_transpose, hidden_error)
+        # Calculate gradient for weights between hidden and output layer
+        # d_weights_hidden_output = np.dot(self.model_output,output_error)
+        d_weights_hidden_output = np.dot(self.hidden_output.T,output_error)
 
         # Update the weights with the derivatives (gradient descent)
-        self.weights_hidden_output += learning_rate * d_weights_hidden_output
-        self.weights_input_hidden += learning_rate * d_weights_input_hidden
+        # 𝑊ℎ = 𝑊ℎ − 𝜇(𝑥𝑇 × 𝑒ℎ)
+        self.weights_input_hidden -= learning_rate * d_weights_input_hidden
+        # 𝑊𝑜 = 𝑊𝑜 − 𝜇(𝑦𝑜 × 𝑒𝑜)
+        self.weights_hidden_output -= learning_rate * d_weights_hidden_output
 
         return loss
 
@@ -225,15 +233,16 @@ class NeuralNetwork:
         self.forward(X)
         return np.argmax(self.model_output, axis=1)
 
-    def visualize_prediction(self, 
-                             X : np.ndarray,  # input data
-                             y_true : np.ndarray,  # one-hot encoded labels
-                             index : int # index of the data point to visualize
-                             ):
+    def visualize_prediction(
+        self,
+        X: np.ndarray,  # input data
+        y_true: np.ndarray,  # one-hot encoded labels
+        index: int,  # index of the data point to visualize
+    ):
         """
         Visualizes the prediction for a single data point.
         """
-        input_data = X[index, :].reshape(28, 28) # 28x28 image
+        input_data = X[index, :].reshape(28, 28)  # 28x28 image
 
         predicted_label = self.predict(X[index : index + 1])[0]
 
@@ -268,7 +277,6 @@ class NeuralNetwork:
 
         plt.tight_layout()
         plt.show()
-
 
     def confusion_matrix(
         self,
