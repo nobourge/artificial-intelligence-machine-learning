@@ -2,42 +2,46 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def load_mnist_data(file_path):
+def load_mnist_data(file_path, from_save=False):
     """
-    Loads the MNIST dataset
-    from a given file path.
+    Loads the MNIST dataset from a given file path.
 
     Parameters:
     file_path (str): Path to the dataset file.
+    from_save (bool): Whether to load from a saved NumPy file.
 
     Returns:
-    tuple: Tuple containing
-    the normalized images and
-    their one-hot encoded labels.
-    one-hot encoding: https://en.wikipedia.org/wiki/One-hot
+    tuple: Tuple containing the normalized images and their one-hot encoded labels.
     """
-    data = np.loadtxt(file_path, delimiter=",", skiprows=1)
+    print("file_path : ", file_path)
 
-    # ...
-    # Extract labels (first column)
-    labels = data[:, 0].astype(int)
-
-    # Extract images (all columns except the first)
-    images = data[:, 1:]
-
-    # Normalize images by dividing by 255
-    images = images / 255.0
-
-    # Number of classes (digits 0-9)
-    num_classes = 10
-    # One-hot encode the labels
-    labels_one_hot = np.eye(num_classes)[labels]
-    # Qu'est-ce qu'un encodage one-hot ?
-    # https://fr.wikipedia.org/wiki/One-hot:
-    # "En apprentissage automatique,
-    # un encodage one-hot est un vecteur
-    # qui contient des valeurs binaires.
-
+    if from_save:
+        # Assuming the saved file is a .npz file
+        save_file = file_path.rsplit(".", 1)[0] + ".npz"
+        print("save_file : ", save_file)
+        try:
+            with np.load(save_file, allow_pickle=True) as data:
+                images = data["images"]
+                labels_one_hot = data["labels_one_hot"]
+        except IOError:
+            print(f"Error loading file: {save_file}. File may not exist.")
+            from_save = False
+            try:
+                data = np.loadtxt(file_path, delimiter=",", skiprows=1)
+                labels = data[:, 0].astype(int)
+                images = data[:, 1:] / 255.0
+                num_classes = 10
+                labels_one_hot = np.eye(num_classes)[labels]
+                # Save the data for future use
+                np.savez(
+                    file_path.rsplit(".", 1)[0] + ".npz",
+                    images=images,
+                    labels_one_hot=labels_one_hot,
+                )
+            except IOError:
+                print(f"Error loading file: {file_path}. File may not exist.")
+                return None, None
+    print("images and labels loaded from", save_file if from_save else file_path)
     return images, labels_one_hot
 
 
@@ -49,11 +53,18 @@ class NeuralNetwork:
         input_size: int,  # input neurons quantity
         hidden_size: int,  # hidden neurons quantity
         output_size: int,  # output neurons quantity
+        hidden_activation_function: str,  # activation function
+        output_activation_function: str = "softmax",  # activation function
     ):
         """initializes the weights
         of the neural network
         with a normal distribution
         """
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.output_size = output_size
+        self.hidden_activation_function = hidden_activation_function
+        self.output_activation_function = output_activation_function
 
         # input hidden is the output of the input layer
         self.weights_input_hidden = np.random.randn(input_size, hidden_size)
@@ -70,6 +81,29 @@ class NeuralNetwork:
         ndarray: Output after applying the tanh function.
         """
         return np.tanh(x)
+        # return np.tanh(-x)
+
+    def rectified_linear_unit(self, x):
+        """ReLU is the
+        activation function
+        Parameters:
+        x (ndarray): Input array.
+
+        Returns:
+        ndarray: Output after applying the ReLU function.
+        """
+        return np.maximum(0, x)
+
+    def rectified_linear_unit_leaky(self, x):
+        """LeakyReLU is the
+        activation function
+        Parameters:
+        x (ndarray): Input array.
+
+        Returns:
+        ndarray: Output after applying the LeakyReLU function.
+        """
+        return np.maximum(0.01 * x, x)
 
     def softmax(self, x: np.ndarray, epsilon=1e-12) -> np.ndarray:
         """
@@ -142,14 +176,24 @@ class NeuralNetwork:
         # Weighted sum of inputs
         # np.dot() is the matrix multiplication between X and self.weights_input_hidden
         self.hidden_input = np.dot(X, self.weights_input_hidden)
-        # Apply tanh activation function
-        self.hidden_output = self.tanh(self.hidden_input)
+        # Apply input-hidden activation function
+        if self.hidden_activation_function == "tanh":
+            self.hidden_output = self.tanh(self.hidden_input)
+        elif self.hidden_activation_function == "ReLU":
+            self.hidden_output = self.rectified_linear_unit(self.hidden_input)
+        elif self.hidden_activation_function == "LeakyReLU":
+            self.hidden_output = self.rectified_linear_unit_leaky(self.hidden_input)
+        else:
+            raise ValueError(
+                f"Unknown activation function: {self.hidden_activation_function}"
+            )
 
         # Hidden Layer to Output Layer
         # Weighted sum of hidden outputs
         self.output_input = np.dot(self.hidden_output, self.weights_hidden_output)
-        # Apply softmax activation function
-        self.model_output = self.softmax(self.output_input)
+        # Apply hidden-output activation function
+        if self.output_activation_function == "softmax":
+            self.model_output = self.softmax(self.output_input)
         # print("self.model_output", self.model_output)
         # print("self.model_output.shape", self.model_output.shape)
 
@@ -194,7 +238,7 @@ class NeuralNetwork:
         d_weights_input_hidden = np.dot(x_transpose, hidden_error)
         # Calculate gradient for weights between hidden and output layer
         # d_weights_hidden_output = np.dot(self.model_output,output_error)
-        d_weights_hidden_output = np.dot(self.hidden_output.T,output_error)
+        d_weights_hidden_output = np.dot(self.hidden_output.T, output_error)
 
         # Update the weights with the derivatives (gradient descent)
         # 𝑊ℎ = 𝑊ℎ − 𝜇(𝑥𝑇 × 𝑒ℎ)
@@ -214,23 +258,27 @@ class NeuralNetwork:
         """
         Trains the neural network.
         """
+        print("hidden_activation_function : ", self.hidden_activation_function)
+        print("output_activation_function : ", self.output_activation_function)
+        print("epochs : ", epochs)
+        print("learning_rate : ", learning_rate)
+        self.epochs = epochs
+        self.learning_rate = learning_rate
         for epoch in range(epochs):
             self.forward(X)
             loss = self.backward(X, y_one_hot, learning_rate)
             if epoch % 10 == 0:
                 print(f"Epoch {epoch}, Loss: {loss}")
 
-    def predict(self, X):
+    def predict(self, X: np.ndarray):  # input data
         """
         Predicts labels for given data.
-
-        Parameters:
-        X (ndarray): Data for prediction.
 
         Returns:
         ndarray: Predicted labels.
         """
         self.forward(X)
+        # return max value of each row
         return np.argmax(self.model_output, axis=1)
 
     def visualize_prediction(
@@ -299,7 +347,10 @@ class NeuralNetwork:
         # Create a plot to visualize the confusion matrix
         plt.figure(figsize=(10, 8))
         plt.imshow(cm, interpolation="nearest", cmap=plt.cm.Blues)
-        plt.title("Confusion Matrix")
+        plt.title(
+            f"Confusion Matrix\nhidden activation function = {self.hidden_activation_function}\noutput activation function = {self.output_activation_function}\nhidden layer size = {self.hidden_size}\nepochs = {self.epochs}\nlearning rate = {self.learning_rate}"
+        )
+
         plt.colorbar()
 
         # Set the tick marks for the x and y axes
@@ -321,18 +372,42 @@ class NeuralNetwork:
 
 
 if __name__ == "__main__":
-    X, y = load_mnist_data("mnist_train.csv/mnist_train.csv")
+    X, y = load_mnist_data("mnist_train.csv/mnist_train.csv", from_save=True)
 
     input_size = X.shape[1]  # shape[0] = number of rows, shape[1] = number of columns
-    hidden_size = 128
+    # hidden_size = 512
+    hidden_size = 256
+    # hidden_size = 128 
     output_size = 10
-    e = 100
-    mu = 0.01
+    hidden_activation_function = "tanh"
+    # hidden_activation_function = "ReLU"
+    # hidden_activation_function = "LeakyReLU"
+    output_activation_function = "softmax"
+    e = 1000
+    # e = 100
+    # e = 1
+    # mu = 0.1
+    # mu = 0.01
+    mu = 0.001
 
-    nn = NeuralNetwork(input_size, hidden_size, output_size)
-    nn.train(X, y, epochs=e, learning_rate=mu)
+    nn = NeuralNetwork(
+        input_size,
+        hidden_size,
+        output_size,
+        hidden_activation_function,
+        output_activation_function,
+    )
+    nn.train(
+        X,
+        y,
+        epochs=e,
+        learning_rate=mu,
+    )
 
-    X_test, y_test = load_mnist_data("mnist_test.csv/mnist_test.csv")
-    nn.confusion_matrix(X_test, y_test)
+    X_test, y_test = load_mnist_data("mnist_test.csv/mnist_test.csv", from_save=True)
+    nn.confusion_matrix(
+        X_test,
+        y_test,
+    )
     # nn.visualize_prediction(X_test, y_test, 10)
     nn.visualize_predictions(X_test, y_test, 10)
