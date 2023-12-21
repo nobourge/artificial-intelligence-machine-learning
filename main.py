@@ -2,7 +2,74 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def load_mnist_data(file_path, from_save=False):
+def sort_csv_file(file_path, sort_by_label=False):
+    """
+    Sorts a CSV file by a given criterion.
+
+    """
+    print("sort_csv_file")
+    print("sort_by_label : ", sort_by_label)
+    print("file_path : ", file_path)
+    # Step 1: Read the CSV file
+    data = np.loadtxt(file_path, delimiter=",", skiprows=1, dtype=int)
+    # s
+
+    # Step 2: Sort the data
+    if sort_by_label:
+        # Assuming the label is in the first column
+        sorted_data = data[data[:, 0].argsort()]
+    else:
+        # If not sorting by label, you can choose another sorting criterion
+        # For example, sort by the second column
+        sorted_data = data[data[:, 1].argsort()]
+
+    # Step 3: Save the sorted data back to a CSV file
+    sorted_file_path = file_path.rsplit(".", 1)[0] + "_sorted.csv"
+    np.savetxt(sorted_file_path, sorted_data, delimiter=",", fmt="%d")
+
+    print("sorted_file_path : ", sorted_file_path)
+    return sorted_file_path  # Return the path of the sorted file for reference
+
+
+def sort_by_labels(images, labels):
+    """
+    Orders the images and labels by the labels.
+
+    Parameters:
+    images (ndarray): Array of images.
+    labels (ndarray): Array of labels.
+
+    Returns:
+    tuple: Tuple containing the sorted images and their corresponding labels.
+    """
+    # Convert labels to their numeric values if they are one-hot encoded
+    if labels.ndim > 1:
+        labels = np.argmax(labels, axis=1)
+        print("labels[0] : ", labels[0])
+
+    # Get the sorted indices based on labels
+    sorted_indices = np.argsort(labels)
+
+    # Sort the images and labels using the sorted indices
+    sorted_images = images[sorted_indices]
+    sorted_labels = labels[sorted_indices]
+    print("sorted_images.shape : ", sorted_images.shape)
+    print("sorted_labels.shape : ", sorted_labels.shape)
+    print("sorted_labels[0] : ", sorted_labels[0])
+    # verify type of values in sorted_labels
+    print("type(sorted_labels[0]) : ", type(sorted_labels[0]))
+    print("type(sorted_labels[0]) : ", type(sorted_labels[0].item()))
+    print("sorted_labels[0].item() : ", sorted_labels[0].item())
+    # verify type of values in sorted_images
+    print("type(sorted_images[0]) : ", type(sorted_images[0]))
+    print("type(sorted_images[0][0]) : ", type(sorted_images[0][0]))
+    print("type(sorted_images[0]) : ", type(sorted_images[0].item()))
+    print("sorted_images[0].item() : ", sorted_images[0].item())
+
+    return sorted_images, sorted_labels
+
+
+def load_mnist_data(file_path, from_save=False, sort_by_label=False):
     """
     Loads the MNIST dataset from a given file path.
 
@@ -18,6 +85,8 @@ def load_mnist_data(file_path, from_save=False):
     if from_save:
         # Assuming the saved file is a .npz file
         save_file = file_path.rsplit(".", 1)[0] + ".npz"
+        if sort_by_labels:
+            save_file = save_file.rsplit(".", 1)[0] + "_label_sorted.npz"
         print("save_file : ", save_file)
         try:
             with np.load(save_file, allow_pickle=True) as data:
@@ -27,21 +96,35 @@ def load_mnist_data(file_path, from_save=False):
             print(f"Error loading file: {save_file}. File may not exist.")
             from_save = False
             try:
+                if sort_by_label:
+                    print("sort_by_label : ", sort_by_label)
+                    file_path = sort_csv_file(file_path, sort_by_label)
+                    print("file_path : ", file_path)
                 data = np.loadtxt(file_path, delimiter=",", skiprows=1)
                 labels = data[:, 0].astype(int)
                 images = data[:, 1:] / 255.0
                 num_classes = 10
                 labels_one_hot = np.eye(num_classes)[labels]
-                # Save the data for future use
-                np.savez(
-                    file_path.rsplit(".", 1)[0] + ".npz",
-                    images=images,
-                    labels_one_hot=labels_one_hot,
-                )
+
             except IOError:
                 print(f"Error loading file: {file_path}. File may not exist.")
                 return None, None
     print("images and labels loaded from", save_file if from_save else file_path)
+
+    if not from_save:
+        # if sort_by_label:
+        #     images, labels = sort_by_labels(images, labels_one_hot)
+        #     # create a new csv file with the sorted images and labels
+        #     print("labels[0] as int: ", labels[0])
+        #     np.savetxt(
+        #         save_file.rsplit(".", 1)[0] + "_label_sorted.csv",
+        #         # np.c_[labels, images],
+        #         np.c_[labels, images],
+        #         delimiter=",",
+        #     )
+        #     labels_one_hot = np.eye(num_classes)[labels]
+        np.savez(save_file, images=images, labels_one_hot=labels_one_hot)
+        print("images and labels saved to", save_file)
     return images, labels_one_hot
 
 
@@ -130,10 +213,10 @@ class NeuralNetwork:
         # a NaN in the output.
 
         sum_exp_x = np.sum(exp_x, axis=1, keepdims=True)
-        # return exp_x / exp_x.sum(axis=1, keepdims=True)
-        return exp_x / np.maximum(
-            sum_exp_x, epsilon
-        )  # Use maximum to prevent division by zero
+        return exp_x / exp_x.sum(axis=1, keepdims=True)
+        # return exp_x / np.maximum(
+            # sum_exp_x, epsilon
+        # )  # Use maximum to prevent division by zero
 
     def mse_loss(
         self, y_true: np.ndarray, y_pred: np.ndarray  # true labels  # predicted labels
@@ -214,8 +297,8 @@ class NeuralNetwork:
         """
         # Calculate the Mean Squared Error loss
 
-        loss = self.mse_loss(y_one_hot, self.model_output)
-        print("loss : ", loss)
+        self.loss = self.mse_loss(y_one_hot, self.model_output)
+        # print("loss : ", loss)
 
         # Rétropropagation
         output_error = self.get_output_error(y_one_hot, self.model_output)
@@ -246,7 +329,10 @@ class NeuralNetwork:
         # 𝑊𝑜 = 𝑊𝑜 − 𝜇(𝑦𝑜 × 𝑒𝑜)
         self.weights_hidden_output -= learning_rate * d_weights_hidden_output
 
-        return loss
+        self.accuracy = np.sum(
+            np.argmax(y_one_hot, axis=1) == np.argmax(self.model_output, axis=1)
+        ) / y_one_hot.shape[0]
+        return self.loss
 
     def train(
         self,
@@ -348,7 +434,7 @@ class NeuralNetwork:
         plt.figure(figsize=(10, 8))
         plt.imshow(cm, interpolation="nearest", cmap=plt.cm.Blues)
         plt.title(
-            f"Confusion Matrix\nhidden activation function = {self.hidden_activation_function}\noutput activation function = {self.output_activation_function}\nhidden layer size = {self.hidden_size}\nepochs = {self.epochs}\nlearning rate = {self.learning_rate}"
+            f"Confusion Matrix ; accuracy = {self.accuracy}\n activation functions = {self.hidden_activation_function}, {self.output_activation_function} ; hidden layer size = {self.hidden_size}\nepochs = {self.epochs} ; learning rate = {self.learning_rate} ; loss = {self.loss}"
         )
 
         plt.colorbar()
@@ -367,28 +453,41 @@ class NeuralNetwork:
             for j in range(num_classes):
                 plt.text(j, i, str(cm[i, j]), ha="center", va="center", color="black")
 
+        # save
+        plt.savefig(
+            f"confusion/confusion_matrix_activation_functions_{self.hidden_activation_function}_{self.output_activation_function}_hidden_layer_size_{self.hidden_size}_epochs_{self.epochs}_learning_rate_{self.learning_rate}_loss_{self.loss}.png",
+            bbox_inches="tight", # prevents the labels from being cut off
+        )
         # Display the plot
         plt.show()
 
 
-if __name__ == "__main__":
-    X, y = load_mnist_data("mnist_train.csv/mnist_train.csv", from_save=True)
 
-    input_size = X.shape[1]  # shape[0] = number of rows, shape[1] = number of columns
+if __name__ == "__main__":
+    X, y = load_mnist_data(
+        "mnist_train.csv/mnist_train.csv", from_save=True, sort_by_label=True
+    )
+
+    # X.shape[0] = number of rows, X.shape[1] = number of columns
+    input_size = X.shape[1]  # 784 = 28 * 28
+    print("input_size : ", input_size)
     # hidden_size = 512
-    hidden_size = 256
-    # hidden_size = 128 
+    # hidden_size = 256
+    hidden_size = 128
     output_size = 10
     hidden_activation_function = "tanh"
     # hidden_activation_function = "ReLU"
     # hidden_activation_function = "LeakyReLU"
     output_activation_function = "softmax"
-    e = 1000
-    # e = 100
+    # e = 1000
+    e = 100
     # e = 1
     # mu = 0.1
+    # mu = 0.05
+    mu = 0.04
+    # mu = 0.03
     # mu = 0.01
-    mu = 0.001
+    # mu = 0.001
 
     nn = NeuralNetwork(
         input_size,

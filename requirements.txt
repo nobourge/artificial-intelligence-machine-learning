@@ -2,4 +2,5 @@ numpy
 matplotlib
 tensorflow  # or pytorch==[version]
 scikit-learn  # if used
+seaborn  # if used
 pytest
