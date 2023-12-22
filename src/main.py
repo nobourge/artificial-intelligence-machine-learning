@@ -31,42 +31,42 @@ def sort_csv_file(file_path, sort_by_label=False):
     return sorted_file_path  # Return the path of the sorted file for reference
 
 
-def sort_by_labels(images, labels):
-    """
-    Orders the images and labels by the labels.
+# def sort_by_labels(images, labels):
+#     """
+#     Orders the images and labels by the labels.
 
-    Parameters:
-    images (ndarray): Array of images.
-    labels (ndarray): Array of labels.
+#     Parameters:
+#     images (ndarray): Array of images.
+#     labels (ndarray): Array of labels.
 
-    Returns:
-    tuple: Tuple containing the sorted images and their corresponding labels.
-    """
-    # Convert labels to their numeric values if they are one-hot encoded
-    if labels.ndim > 1:
-        labels = np.argmax(labels, axis=1)
-        print("labels[0] : ", labels[0])
+#     Returns:
+#     tuple: Tuple containing the sorted images and their corresponding labels.
+#     """
+#     # Convert labels to their numeric values if they are one-hot encoded
+#     if labels.ndim > 1:
+#         labels = np.argmax(labels, axis=1)
+#         print("labels[0] : ", labels[0])
 
-    # Get the sorted indices based on labels
-    sorted_indices = np.argsort(labels)
+#     # Get the sorted indices based on labels
+#     sorted_indices = np.argsort(labels)
 
-    # Sort the images and labels using the sorted indices
-    sorted_images = images[sorted_indices]
-    sorted_labels = labels[sorted_indices]
-    print("sorted_images.shape : ", sorted_images.shape)
-    print("sorted_labels.shape : ", sorted_labels.shape)
-    print("sorted_labels[0] : ", sorted_labels[0])
-    # verify type of values in sorted_labels
-    print("type(sorted_labels[0]) : ", type(sorted_labels[0]))
-    print("type(sorted_labels[0]) : ", type(sorted_labels[0].item()))
-    print("sorted_labels[0].item() : ", sorted_labels[0].item())
-    # verify type of values in sorted_images
-    print("type(sorted_images[0]) : ", type(sorted_images[0]))
-    print("type(sorted_images[0][0]) : ", type(sorted_images[0][0]))
-    print("type(sorted_images[0]) : ", type(sorted_images[0].item()))
-    print("sorted_images[0].item() : ", sorted_images[0].item())
+#     # Sort the images and labels using the sorted indices
+#     sorted_images = images[sorted_indices]
+#     sorted_labels = labels[sorted_indices]
+#     print("sorted_images.shape : ", sorted_images.shape)
+#     print("sorted_labels.shape : ", sorted_labels.shape)
+#     print("sorted_labels[0] : ", sorted_labels[0])
+#     # verify type of values in sorted_labels
+#     print("type(sorted_labels[0]) : ", type(sorted_labels[0]))
+#     print("type(sorted_labels[0]) : ", type(sorted_labels[0].item()))
+#     print("sorted_labels[0].item() : ", sorted_labels[0].item())
+#     # verify type of values in sorted_images
+#     print("type(sorted_images[0]) : ", type(sorted_images[0]))
+#     print("type(sorted_images[0][0]) : ", type(sorted_images[0][0]))
+#     print("type(sorted_images[0]) : ", type(sorted_images[0].item()))
+#     print("sorted_images[0].item() : ", sorted_images[0].item())
 
-    return sorted_images, sorted_labels
+#     return sorted_images, sorted_labels
 
 
 def load_mnist_data(file_path, from_save=False, sort_by_label=False):
@@ -85,7 +85,7 @@ def load_mnist_data(file_path, from_save=False, sort_by_label=False):
     if from_save:
         # Assuming the saved file is a .npz file
         save_file = file_path.rsplit(".", 1)[0] + ".npz"
-        if sort_by_labels:
+        if sort_by_label:
             save_file = save_file.rsplit(".", 1)[0] + "_label_sorted.npz"
         print("save_file : ", save_file)
         try:
@@ -112,17 +112,6 @@ def load_mnist_data(file_path, from_save=False, sort_by_label=False):
     print("images and labels loaded from", save_file if from_save else file_path)
 
     if not from_save:
-        # if sort_by_label:
-        #     images, labels = sort_by_labels(images, labels_one_hot)
-        #     # create a new csv file with the sorted images and labels
-        #     print("labels[0] as int: ", labels[0])
-        #     np.savetxt(
-        #         save_file.rsplit(".", 1)[0] + "_label_sorted.csv",
-        #         # np.c_[labels, images],
-        #         np.c_[labels, images],
-        #         delimiter=",",
-        #     )
-        #     labels_one_hot = np.eye(num_classes)[labels]
         np.savez(save_file, images=images, labels_one_hot=labels_one_hot)
         print("images and labels saved to", save_file)
     return images, labels_one_hot
@@ -154,11 +143,11 @@ class NeuralNetwork:
         # hidden output is the output of the hidden layer
         self.weights_hidden_output = np.random.randn(hidden_size, output_size)
 
-    def tanh(self, x):
+    def tanh(self, 
+             x : np.ndarray # input data
+             ):
         """tanh is the
         activation function
-        Parameters:
-        x (ndarray): Input array.
 
         Returns:
         ndarray: Output after applying the tanh function.
@@ -166,11 +155,11 @@ class NeuralNetwork:
         return np.tanh(x)
         # return np.tanh(-x)
 
-    def rectified_linear_unit(self, x):
+    def rectified_linear_unit(self, 
+                              x : np.ndarray # input data
+                              ):
         """ReLU is the
         activation function
-        Parameters:
-        x (ndarray): Input array.
 
         Returns:
         ndarray: Output after applying the ReLU function.
@@ -180,15 +169,16 @@ class NeuralNetwork:
     def rectified_linear_unit_leaky(self, x):
         """LeakyReLU is the
         activation function
-        Parameters:
-        x (ndarray): Input array.
 
         Returns:
         ndarray: Output after applying the LeakyReLU function.
         """
         return np.maximum(0.01 * x, x)
 
-    def softmax(self, x: np.ndarray, epsilon=1e-12) -> np.ndarray:
+    def softmax(self, 
+                x: np.ndarray, 
+                epsilon=1e-12
+                ) -> np.ndarray:
         """
         Softmax activation function.
 
@@ -465,7 +455,7 @@ class NeuralNetwork:
 
 if __name__ == "__main__":
     X, y = load_mnist_data(
-        "mnist_train.csv/mnist_train.csv", from_save=True, sort_by_label=True
+        "mnist_train.csv", from_save=True, sort_by_label=True
     )
 
     # X.shape[0] = number of rows, X.shape[1] = number of columns
@@ -503,7 +493,7 @@ if __name__ == "__main__":
         learning_rate=mu,
     )
 
-    X_test, y_test = load_mnist_data("mnist_test.csv/mnist_test.csv", from_save=True)
+    X_test, y_test = load_mnist_data("mnist_test.csv", from_save=True)
     nn.confusion_matrix(
         X_test,
         y_test,

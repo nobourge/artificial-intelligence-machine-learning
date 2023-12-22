@@ -8,7 +8,7 @@
 \geometry{a4paper, margin=1.2in}
 
 \title{Machine Learning Project Report: Neural Network Implementation on MNIST Dataset}
-\author{Your Name}
+\author{Noé Bourgeois}
 \date{Academic Year 2023-2024}
 
 \begin{document}
@@ -22,7 +22,8 @@
 \section{Introduction}
 % Introduce the project, its objectives, and significance
 
-\section{Methodology}
+% \section{Methodology}
+\section{Experimentation Framework}
 % Describe the methodology, including neural network architecture, 
 % forward propagation, error calculation, and backpropagation
 
@@ -41,13 +42,50 @@
 \section{Results}
 % Present the results of your experiments
 % Include graphs, tables, and confusion matrix visualizations
+\subsection{Training}
+\subsection{Testing}
+\subsubsection{Confusion Matrix}
+% graph:
+\begin{figure}
+% \begin{figure}[h] % h forces the figure to be placed here
+% \begin{figure}[h!] % ! after h forces the figure to be placed here
+    \centering
+    \includegraphics[width=\textwidth]{media/confusion/confusion_matrix_activation_functions_tanh_softmax_hidden_layer_size_128_epochs_100_learning_rate_0.04_loss_0.7846220348759285.png}
+    \caption{Confusion Matrix for tanh activation function, softmax output function, 1 hidden layer of 128 neurons, 100 epochs, 0.04 learning rate, and 0.7846220348759285 loss.}
+    \label{fig:confusion}
+\end{figure}
+\subsubsection{Accuracy}
+\subsubsection{Prediction}
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{media/prediction/4.png}
+    \caption{Prediction}
+    \label{fig:Prediction}
+\end{figure}
+\subsection{Convolution}
+98.8\% accuracy
+\subsubsection{Confusion Matrix}
+% graph:
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{media/convolution/Figure_1.png}
+    \caption{Confusion Matrix for convolutional model.}
+    \label{fig:convolution_confusion}
+\end{figure}
 
-\section{Discussion}
+% \section{Discussion}
+\section{Analysis}
 % Discuss the results, what they mean, and any conclusions you can draw
 
 \section{Conclusion}
 % Summarize the main findings and future work
-
+\subsection{Main Findings}
+\subsection{Tools}
+\subsubsection{Assistance}
+\begin{itemize}
+    \item ChatGPT
+\end{itemize}
+\subsection{Future Work}
 \section{References}
 % Include your references here
 \bibliographystyle{plain}
