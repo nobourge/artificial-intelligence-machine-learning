@@ -172,6 +172,7 @@ INPUT .\media\prediction\4.png
 INPUT .\media\prediction\4.png
 INPUT .\media\prediction\4.png
 INPUT .\media\prediction\4.png
+INPUT C:\Users\bourg\AppData\Local\MiKTeX\fonts\map\pdftex\pdftex.map
 INPUT .\media\convolution\Figure_1.png
 INPUT .\media\convolution\Figure_1.png
 INPUT .\media\convolution\Figure_1.png
@@ -183,7 +184,6 @@ INPUT C:\Users\bourg\AppData\Local\Programs\MiKTeX\fonts\tfm\jknappen\ec\tcrm100
 INPUT .\report.bbl
 INPUT .\report.bbl
 INPUT report.bbl
-INPUT C:\Users\bourg\AppData\Local\MiKTeX\fonts\map\pdftex\pdftex.map
 INPUT C:\Users\bourg\AppData\Local\Programs\MiKTeX\fonts\enc\dvips\cm-super\cm-super-ts1.enc
 INPUT report.aux
 INPUT .\report.out

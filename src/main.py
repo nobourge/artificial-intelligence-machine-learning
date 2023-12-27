@@ -1,6 +1,11 @@
+import csv
+from datetime import date
+import time
 import numpy as np
 import matplotlib.pyplot as plt
-
+from mpl_toolkits.mplot3d import Axes3D
+from scipy import sparse
+from scipy.interpolate import griddata
 
 def sort_csv_file(file_path, sort_by_label=False):
     """
@@ -10,78 +15,24 @@ def sort_csv_file(file_path, sort_by_label=False):
     print("sort_csv_file")
     print("sort_by_label : ", sort_by_label)
     print("file_path : ", file_path)
-    # Step 1: Read the CSV file
     data = np.loadtxt(file_path, delimiter=",", skiprows=1, dtype=int)
-    # s
-
-    # Step 2: Sort the data
     if sort_by_label:
         # Assuming the label is in the first column
         sorted_data = data[data[:, 0].argsort()]
-    else:
-        # If not sorting by label, you can choose another sorting criterion
-        # For example, sort by the second column
-        sorted_data = data[data[:, 1].argsort()]
-
-    # Step 3: Save the sorted data back to a CSV file
     sorted_file_path = file_path.rsplit(".", 1)[0] + "_sorted.csv"
     np.savetxt(sorted_file_path, sorted_data, delimiter=",", fmt="%d")
 
     print("sorted_file_path : ", sorted_file_path)
     return sorted_file_path  # Return the path of the sorted file for reference
 
-
-# def sort_by_labels(images, labels):
-#     """
-#     Orders the images and labels by the labels.
-
-#     Parameters:
-#     images (ndarray): Array of images.
-#     labels (ndarray): Array of labels.
-
-#     Returns:
-#     tuple: Tuple containing the sorted images and their corresponding labels.
-#     """
-#     # Convert labels to their numeric values if they are one-hot encoded
-#     if labels.ndim > 1:
-#         labels = np.argmax(labels, axis=1)
-#         print("labels[0] : ", labels[0])
-
-#     # Get the sorted indices based on labels
-#     sorted_indices = np.argsort(labels)
-
-#     # Sort the images and labels using the sorted indices
-#     sorted_images = images[sorted_indices]
-#     sorted_labels = labels[sorted_indices]
-#     print("sorted_images.shape : ", sorted_images.shape)
-#     print("sorted_labels.shape : ", sorted_labels.shape)
-#     print("sorted_labels[0] : ", sorted_labels[0])
-#     # verify type of values in sorted_labels
-#     print("type(sorted_labels[0]) : ", type(sorted_labels[0]))
-#     print("type(sorted_labels[0]) : ", type(sorted_labels[0].item()))
-#     print("sorted_labels[0].item() : ", sorted_labels[0].item())
-#     # verify type of values in sorted_images
-#     print("type(sorted_images[0]) : ", type(sorted_images[0]))
-#     print("type(sorted_images[0][0]) : ", type(sorted_images[0][0]))
-#     print("type(sorted_images[0]) : ", type(sorted_images[0].item()))
-#     print("sorted_images[0].item() : ", sorted_images[0].item())
-
-#     return sorted_images, sorted_labels
-
-
-def load_mnist_data(file_path, from_save=False, sort_by_label=False):
+def load_mnist_data(file_path : str, # Path to the dataset file.
+                    from_save=False, # Whether to load from a saved NumPy file.
+                    sort_by_label=False # Whether to sort the data by label.
+                    ) -> tuple: # Tuple containing the normalized images and their one-hot encoded labels.
     """
     Loads the MNIST dataset from a given file path.
-
-    Parameters:
-    file_path (str): Path to the dataset file.
-    from_save (bool): Whether to load from a saved NumPy file.
-
-    Returns:
-    tuple: Tuple containing the normalized images and their one-hot encoded labels.
     """
     print("file_path : ", file_path)
-
     if from_save:
         # Assuming the saved file is a .npz file
         save_file = file_path.rsplit(".", 1)[0] + ".npz"
@@ -95,25 +46,32 @@ def load_mnist_data(file_path, from_save=False, sort_by_label=False):
         except IOError:
             print(f"Error loading file: {save_file}. File may not exist.")
             from_save = False
-            try:
-                if sort_by_label:
-                    print("sort_by_label : ", sort_by_label)
-                    file_path = sort_csv_file(file_path, sort_by_label)
-                    print("file_path : ", file_path)
-                data = np.loadtxt(file_path, delimiter=",", skiprows=1)
-                labels = data[:, 0].astype(int)
-                images = data[:, 1:] / 255.0
-                num_classes = 10
-                labels_one_hot = np.eye(num_classes)[labels]
-
-            except IOError:
-                print(f"Error loading file: {file_path}. File may not exist.")
-                return None, None
-    print("images and labels loaded from", save_file if from_save else file_path)
 
     if not from_save:
+        try:
+            if sort_by_label:
+                print("sort_by_label : ", sort_by_label)
+                file_path = sort_csv_file(file_path, sort_by_label)
+                print("file_path : ", file_path)
+            data = np.loadtxt(file_path, delimiter=",", skiprows=1)
+            labels = data[:, 0].astype(int)
+            images = data[:, 1:] / 255.0
+            # images = sparse.csr_matrix(images)
+
+            num_classes = 10
+            labels_one_hot = np.eye(num_classes)[labels]
+
+        except IOError:
+            print(f"Error loading file: {file_path}. File may not exist.")
+            return None, None
+        print("images and labels loaded from", save_file if from_save else file_path)
+        
+        if sparse: 
+            # np.savez(save_file, images_sparse=images_sparse, labels_one_hot=labels_one_hot)
+            save_file = file_path.rsplit(".", 1)[0] + "_sparse.npz"
         np.savez(save_file, images=images, labels_one_hot=labels_one_hot)
         print("images and labels saved to", save_file)
+    # return images_sparse, labels_one_hot
     return images, labels_one_hot
 
 
@@ -144,69 +102,46 @@ class NeuralNetwork:
         self.weights_hidden_output = np.random.randn(hidden_size, output_size)
 
     def tanh(self, 
-             x : np.ndarray # input data
-             ):
-        """tanh is the
-        activation function
-
-        Returns:
-        ndarray: Output after applying the tanh function.
+             x: np.ndarray # input data
+             ) -> np.ndarray: # Output after applying the tanh function.
+        """
+        tanh activation function
         """
         return np.tanh(x)
-        # return np.tanh(-x)
 
     def rectified_linear_unit(self, 
-                              x : np.ndarray # input data
-                              ):
-        """ReLU is the
-        activation function
-
-        Returns:
-        ndarray: Output after applying the ReLU function.
+                              x: np.ndarray
+                              ) -> np.ndarray:
+        """
+        ReLU activation function
         """
         return np.maximum(0, x)
 
     def rectified_linear_unit_leaky(self, x):
-        """LeakyReLU is the
-        activation function
-
-        Returns:
-        ndarray: Output after applying the LeakyReLU function.
+        """
+        LeakyReLU activation function
         """
         return np.maximum(0.01 * x, x)
 
-    def softmax(self, 
-                x: np.ndarray, 
-                epsilon=1e-12
-                ) -> np.ndarray:
+    def softmax(self, x: np.ndarray, epsilon=1e-12) -> np.ndarray:
         """
         Softmax activation function.
-
-        Returns:
-        ndarray: Output after applying the softmax function.
         """
-        # subtract the maximum value in the input array x
-        # before taking the exponential.
-        # This prevents overflow by ensuring
-        # the argument of np.exp is always non-positive
-        exp_x = np.exp(x - np.max(x))
-        # but underflow can still occur
-        # if x is a large negative number,
-        # resulting in exp_x becoming zero.
+        # to avoid large exponentials and possible overflows:
+        # Shift each row of x by subtracting its max value.
 
-        # One potential issue is that
-        # if all values in a row of x are very large
-        # negative numbers,
-        # exp_x will be an array of zeros,
-        # and summing these will result in
-        # zero - leading to a division by zero and hence
-        # a NaN in the output.
+        x_shifted = x - np.max(x, axis=1, keepdims=True)
 
-        sum_exp_x = np.sum(exp_x, axis=1, keepdims=True)
-        return exp_x / exp_x.sum(axis=1, keepdims=True)
-        # return exp_x / np.maximum(
-            # sum_exp_x, epsilon
-        # )  # Use maximum to prevent division by zero
+        # Calculate the softmax with the shifted values.
+        exp_x_shifted = np.exp(x_shifted)
+        sum_exp_x_shifted = np.sum(exp_x_shifted, axis=1, keepdims=True)
+
+        # Calculate softmax and prevent division by zero.
+        softmax_output = np.divide(
+            exp_x_shifted, np.maximum(sum_exp_x_shifted, epsilon)
+        )
+
+        return softmax_output
 
     def mse_loss(
         self, y_true: np.ndarray, y_pred: np.ndarray  # true labels  # predicted labels
@@ -223,8 +158,6 @@ class NeuralNetwork:
 
     def get_output_error(
         self,
-        #  y_one_hot : np.ndarray # one-hot encoded labels,
-        #  model_output : np.ndarray # predicted labels
         y_true: np.ndarray,  # true labels
         y_pred: np.ndarray,  # predicted labels
     ) -> np.ndarray:
@@ -247,7 +180,6 @@ class NeuralNetwork:
         """
         # Input to Hidden Layer
         # Weighted sum of inputs
-        # np.dot() is the matrix multiplication between X and self.weights_input_hidden
         self.hidden_input = np.dot(X, self.weights_input_hidden)
         # Apply input-hidden activation function
         if self.hidden_activation_function == "tanh":
@@ -267,9 +199,6 @@ class NeuralNetwork:
         # Apply hidden-output activation function
         if self.output_activation_function == "softmax":
             self.model_output = self.softmax(self.output_input)
-        # print("self.model_output", self.model_output)
-        # print("self.model_output.shape", self.model_output.shape)
-
         return self.model_output
 
     def backward(
@@ -286,7 +215,6 @@ class NeuralNetwork:
         float: Computed loss.
         """
         # Calculate the Mean Squared Error loss
-
         self.loss = self.mse_loss(y_one_hot, self.model_output)
         # print("loss : ", loss)
 
@@ -296,7 +224,6 @@ class NeuralNetwork:
         # Calculate hidden layer error (backpropagated error)
         # hidden_output_ =  1 - self.hidden_output**2
         # L’erreur de la couche intermédiaire est donnée par 𝑒ℎ = (𝑒_𝑜 × 𝑊_𝑜^𝑇 ) ∗ 𝑦ℎ ∗ (1 − 𝑦ℎ)
-        # weights_hidden_output_transpose = self.weights_hidden_output.T
         weights_hidden_output_transpose = np.transpose(self.weights_hidden_output)
 
         hidden_error = (
@@ -310,7 +237,6 @@ class NeuralNetwork:
         x_transpose = np.transpose(X)
         d_weights_input_hidden = np.dot(x_transpose, hidden_error)
         # Calculate gradient for weights between hidden and output layer
-        # d_weights_hidden_output = np.dot(self.model_output,output_error)
         d_weights_hidden_output = np.dot(self.hidden_output.T, output_error)
 
         # Update the weights with the derivatives (gradient descent)
@@ -319,10 +245,35 @@ class NeuralNetwork:
         # 𝑊𝑜 = 𝑊𝑜 − 𝜇(𝑦𝑜 × 𝑒𝑜)
         self.weights_hidden_output -= learning_rate * d_weights_hidden_output
 
-        self.accuracy = np.sum(
-            np.argmax(y_one_hot, axis=1) == np.argmax(self.model_output, axis=1)
-        ) / y_one_hot.shape[0]
+        self.accuracy = (
+            np.sum(np.argmax(y_one_hot, axis=1) == np.argmax(self.model_output, axis=1))
+            / y_one_hot.shape[0]
+        )
         return self.loss
+
+
+    def exponential_decay_lr(self, 
+                             initial_lr, 
+                             epoch, 
+                             total_epochs, 
+                             decay_rate = 0.1,
+                             end_lr = 0.0001
+                             ):
+        """
+        Calculates the exponentially decaying learning rate.
+
+        Parameters:
+        initial_lr (float): Initial learning rate.
+        epoch (int): Current epoch.
+        total_epochs (int): Total number of epochs.
+        decay_rate (float): Decay rate.
+
+        Returns:
+        float: Adjusted learning rate.
+        """
+        return initial_lr * np.exp(-decay_rate * epoch / total_epochs)
+        # lr_decay = (initial_lr - end_lr) / total_epochs
+        # return initial_lr - lr_decay * epoch
 
     def train(
         self,
@@ -330,6 +281,8 @@ class NeuralNetwork:
         y_one_hot: np.ndarray,  # one-hot encoded labels
         epochs=100,  # number of training epochs
         learning_rate=0.01,  # learning rate
+        batch_size=32,  # batch size
+        #batch_size=1000,  # batch size
     ):
         """
         Trains the neural network.
@@ -340,11 +293,48 @@ class NeuralNetwork:
         print("learning_rate : ", learning_rate)
         self.epochs = epochs
         self.learning_rate = learning_rate
+        learning_rate_decay = learning_rate/epochs
+        # self.accuracy = 1 - learning_rate
+        self.accuracy = 0.0
+
+        best_accuracy = 0.0
+        best_weights_input_hidden = None
+        best_weights_hidden_output = None   
+
         for epoch in range(epochs):
-            self.forward(X)
-            loss = self.backward(X, y_one_hot, learning_rate)
+            # reducing the learning rate to reach near 0
+            learning_rate = self.learning_rate * (1 - self.accuracy)**10
+            print(f"epoch : {epoch} ; learning_rate : {learning_rate} ; accuracy : {self.accuracy}")
+            # Shuffle the dataset 
+            permutation = np.random.permutation(X.shape[0])
+            x_shuffled = X[permutation]
+            y_shuffled = y[permutation]
+
+            for i in range(0, X.shape[0], batch_size):
+                x_batch = x_shuffled[i : i + batch_size]
+                y_batch = y_shuffled[i : i + batch_size]
+
+                # Forward and backward pass for the batch
+                self.forward(x_batch)
+                loss = self.backward(x_batch, y_batch, learning_rate)
+
+            print(f"Epoch {epoch}, Loss: {loss}, Accuracy: {self.accuracy}")
             if epoch % 10 == 0:
                 print(f"Epoch {epoch}, Loss: {loss}")
+            if loss < 0.01:
+                print("accuracy : ", self.accuracy)
+                break
+            if self.accuracy > best_accuracy:
+                best_accuracy = self.accuracy
+                best_weights_input_hidden = self.weights_input_hidden.copy()
+                best_weights_hidden_output = self.weights_hidden_output.copy()
+
+        # Restore the best state of the network
+        self.weights_input_hidden = best_weights_input_hidden
+        self.weights_hidden_output = best_weights_hidden_output
+        self.accuracy = best_accuracy
+
+        print(f"Best accuracy: {self.accuracy}")
 
     def predict(self, X: np.ndarray):  # input data
         """
@@ -446,57 +436,199 @@ class NeuralNetwork:
         # save
         plt.savefig(
             f"confusion/confusion_matrix_activation_functions_{self.hidden_activation_function}_{self.output_activation_function}_hidden_layer_size_{self.hidden_size}_epochs_{self.epochs}_learning_rate_{self.learning_rate}_loss_{self.loss}.png",
-            bbox_inches="tight", # prevents the labels from being cut off
+            bbox_inches="tight",  # prevents the labels from being cut off
         )
-        # Display the plot
         plt.show()
 
 
+    def save_results_to_csv(self,
+                            results, 
+                            file_path
+                            ):
+        """
+        Saves the results dictionary to a CSV file.
+
+        Parameters:
+        results (dict): The results dictionary.
+        file_path (str): Path to the CSV file.
+        """
+        with open(file_path, 'w', newline='') as file:
+            writer = csv.writer(file)
+            for key, value in results.items():
+                lr, epochs, hidden_size = key
+                accuracy = value
+                writer.writerow([lr, epochs, hidden_size, accuracy])
+
+    def test_combinations(self, X, y, learning_rates, epochs_list, hidden_sizes):
+        """
+        Tests different combinations of learning rates, epochs, and hidden layer sizes.
+
+        Parameters:
+        X (ndarray): Input data.
+        y (ndarray): Target labels.
+        learning_rates (list): List of learning rates to test.
+        epochs_list (list): List of numbers of epochs to test.
+        hidden_sizes (list): List of hidden layer sizes to test.
+
+        Returns:
+        dict: Dictionary containing accuracies for each combination.
+        """
+
+        results = {}
+        for hidden_size in hidden_sizes:
+            weights_input_hidden = np.random.randn(
+                            self.input_size, hidden_size
+                        )
+            weights_hidden_output = np.random.randn(
+                            hidden_size, self.output_size
+                        )
+            for lr in learning_rates:
+                for epoch in epochs_list:
+                    print(f"LR: {lr}, Epochs: {epoch}, Hidden Size: {hidden_size}")
+                    # Reinitialize the network with the new hidden layer size
+                    self.hidden_size = hidden_size
+                    self.weights_input_hidden = weights_input_hidden
+                    self.weights_hidden_output = weights_hidden_output
+
+                    # Train the network
+                    self.train(X, y, epochs=epoch, learning_rate=lr)
+
+                    # Record the accuracy
+                    accuracy = self.accuracy
+                    results[(lr, epoch, hidden_size)] = accuracy
+
+                    print(
+                        f"LR: {lr}, Epochs: {epoch}, Hidden Size: {hidden_size}, Accuracy: {accuracy}"
+                    )
+        save_file = "test_combinations_results"+date.today().strftime("%Y%m%d")+time.strftime("%H%M%S")
+        try:
+            # # Convert the dictionary to a 2D array
+            # results_array = np.array(list(results.items()))
+
+            # # Save the array
+            # np.savetxt(save_file, results_array, delimiter=",", fmt="%s")
+            self.save_results_to_csv(results, save_file)
+
+            print(f"Results saved to {save_file}")
+        except IOError:
+            print(f"Error saving file: {save_file}.")
+
+        return results
+
+
+    def plot_results(self, results):
+        """
+        Plots the results of the test_combinations method.
+
+        """
+        # sort the results by keys ascending values
+        results = dict(sorted(results.items(), key=lambda item: item[0])) # item[0] is the key of the dictionary 
+        fig = plt.figure(figsize=(12, 9))
+        ax = fig.add_subplot(111, projection="3d")
+
+        # Extract data for plotting
+        learning_rates = np.array([k[0] for k in results.keys()])
+        epochs = np.array([k[1] for k in results.keys()])
+        hidden_sizes = np.array([k[2] for k in results.keys()])
+        accuracies = np.array(list(results.values()))
+
+        # Calculate point sizes (e.g., normalize accuracies and scale them)
+        point_sizes = 100 * (accuracies - accuracies.min()) / (accuracies.max() - accuracies.min())
+
+        # Scatter plot with dynamic point sizes
+        img = ax.scatter(learning_rates, 
+                        epochs, 
+                        hidden_sizes, 
+                        c=accuracies, 
+                        s=point_sizes,  # Apply calculated sizes here
+                        # cmap=plt.viridis()
+                        cmap='RdYlGn'
+                        )
+        fig.colorbar(img)
+
+        # Add labels and title
+        ax.set_xlabel("Learning Rate")
+        ax.set_ylabel("Epochs")
+        ax.set_zlabel("Hidden Layer Size")
+        ax.set_title(f"Activation Functions: {self.hidden_activation_function}, {self.output_activation_function}; accuracy max: {accuracies.max()}")
+
+        # Set axis limits
+        ax.set_xlim([learning_rates.min(), learning_rates.max()])
+        ax.set_ylim([epochs.min(), epochs.max()])
+        ax.set_zlim([hidden_sizes.min(), hidden_sizes.max()])
+
+        # Draw lines
+        for lr, ep, hs, acc in zip(learning_rates, epochs, hidden_sizes, accuracies):
+            color = plt.cm.viridis(acc)
+            ax.plot([lr, lr], [ep, ep], [hidden_sizes.min(), hs], color=color, linestyle="--", linewidth=0.5)  # vertical line
+            ax.plot([lr, lr], [epochs.min(), ep], [hs, hs], color=color, linestyle="--", linewidth=0.5)  # learning rate to epochs
+            ax.plot([learning_rates.min(), lr], [ep, ep], [hs, hs], color=color, linestyle="--", linewidth=0.5)  # epochs to hidden size
+
+        # Save and show
+        plt.savefig(
+            f"results_plot_activation_functions_{self.hidden_activation_function}_{self.output_activation_function}_date_{date.today()}.png",
+            bbox_inches="tight",
+        )
+        plt.show()
+
 
 if __name__ == "__main__":
-    X, y = load_mnist_data(
-        "mnist_train.csv", from_save=True, sort_by_label=True
-    )
+    X, y = load_mnist_data("src/mnist_train.csv", 
+                           from_save=True, 
+                        #    sort_by_label=True
+                           sort_by_label=False
+                           )
 
-    # X.shape[0] = number of rows, X.shape[1] = number of columns
+    # # X.shape[0] = number of rows, X.shape[1] = number of columns
     input_size = X.shape[1]  # 784 = 28 * 28
-    print("input_size : ", input_size)
-    # hidden_size = 512
-    # hidden_size = 256
+    # print("input_size : ", input_size)
+    # # hidden_size = 512
+    # # hidden_size = 256
     hidden_size = 128
-    output_size = 10
+    OUTPUT_SIZE = 10
     hidden_activation_function = "tanh"
-    # hidden_activation_function = "ReLU"
-    # hidden_activation_function = "LeakyReLU"
+    # # hidden_activation_function = "ReLU"
+    # # hidden_activation_function = "LeakyReLU"
     output_activation_function = "softmax"
-    # e = 1000
-    e = 100
-    # e = 1
-    # mu = 0.1
-    # mu = 0.05
-    mu = 0.04
-    # mu = 0.03
-    # mu = 0.01
-    # mu = 0.001
-
+ 
     nn = NeuralNetwork(
         input_size,
         hidden_size,
-        output_size,
+        OUTPUT_SIZE,
         hidden_activation_function,
         output_activation_function,
     )
-    nn.train(
-        X,
-        y,
-        epochs=e,
-        learning_rate=mu,
-    )
+    # nn.train(
+    #     X,
+    #     y,
+    #     epochs=e,
+    #     learning_rate=mu,
+    # )
 
-    X_test, y_test = load_mnist_data("mnist_test.csv", from_save=True)
-    nn.confusion_matrix(
-        X_test,
-        y_test,
-    )
-    # nn.visualize_prediction(X_test, y_test, 10)
-    nn.visualize_predictions(X_test, y_test, 10)
+    # X_test, y_test = load_mnist_data("mnist_test.csv", from_save=True)
+    # nn.confusion_matrix(
+    #     X_test,
+    #     y_test,
+    # )
+    # # nn.visualize_prediction(X_test, y_test, 10)
+    # nn.visualize_predictions(X_test, y_test, 10)
+
+    # learning_rates = [0.001, 0.01, 1]
+    learning_rates = [0.001, 0.05, 0.01]
+    # learning_rates = [1]
+    # epochs_list = [10, 100, 1000]
+    # epochs_list = [1, 10, 100]
+    epochs_list = [100, 10, 1]
+    # epochs_list = [1, 2, 3]
+    # epochs_list = (value for value in np.arange(100, 1000, 100))
+    # hidden_sizes = [28, 784, 21952]
+    # hidden_sizes = [1, 2, 3]
+    # hidden_sizes = [1, 28, 21952]
+    # hidden_sizes = [21952, 28, 1]
+    hidden_sizes = [784, 56, 28]
+    # hidden_sizes = [14, 28, 784]
+    batch_size = 32
+
+
+    results = nn.test_combinations(X, y, learning_rates, epochs_list, hidden_sizes)
+    nn.plot_results(results)
