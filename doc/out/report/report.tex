@@ -39,11 +39,45 @@
 \subsection{Backpropagation}
 % Explain the backpropagation process for weight updates
 
+\subsection{Batching}
+subsubsection{Lower Memory Requirements}
+ Smaller batches require less memory, making it feasible to train models on machines with limited GPU memory. 
+ This allows for using more complex models or higher-resolution data.
+
+When we tried to train the network with the 
+whole dataset on 21000+ neurons, 
+we ran into memory issues.
+We then decided to split the dataset into batches of 100 samples each.
+
+subsubsection{Better Generalization} 
+We realised that the accuracy was higher than expected with smaller batches.
+Smaller batches often provide a regularizing effect
+ and higher generalization performance. 
+ This is because each update is noisier, 
+ which can help the network to escape 
+ local minima in the loss landscape and 
+ explore a broader range of solutions.
+We finally decided to use batches of 32 samples each.
+
+subsubsection{Frequent Updates} 
+With smaller batches, 
+the model weights are updated more frequently, 
+which can lead to faster learning initially. 
+This is especially useful in the early stages of training, 
+where large updates can help to make significant progress.
+
+% Describe the batching process
 
 \section{Results}
 % Present the results of your experiments
 % Include graphs, tables, and confusion matrix visualizations
 \subsection{Training}
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{media/training/results_plot_activation_functions_tanh_softmax_2023-12-29162932.png}
+    \caption{Training comparison results for tanh activation function, softmax output function}
+    \label{fig:comparison}
+\end{figure}
 \subsection{Testing}
 \subsubsection{Confusion Matrix}
 % graph:
