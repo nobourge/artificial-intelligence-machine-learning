@@ -22,7 +22,6 @@
 \section{Introduction}
 % Introduce the project, its objectives, and significance
 
-% \section{Methodology}
 \section{Experimentation Framework}
 % Describe the methodology, including neural network architecture, 
 % forward propagation, error calculation, and backpropagation
@@ -40,7 +39,7 @@
 % Explain the backpropagation process for weight updates
 
 \subsection{Batching}
-subsubsection{Lower Memory Requirements}
+\subsubsection{Lower Memory Requirements}
  Smaller batches require less memory, making it feasible to train models on machines with limited GPU memory. 
  This allows for using more complex models or higher-resolution data.
 
@@ -49,7 +48,7 @@ whole dataset on 21000+ neurons,
 we ran into memory issues.
 We then decided to split the dataset into batches of 100 samples each.
 
-subsubsection{Better Generalization} 
+\subsubsection{Better Generalization} 
 We realised that the accuracy was higher than expected with smaller batches.
 Smaller batches often provide a regularizing effect
  and higher generalization performance. 
@@ -59,7 +58,7 @@ Smaller batches often provide a regularizing effect
  explore a broader range of solutions.
 We finally decided to use batches of 32 samples each.
 
-subsubsection{Frequent Updates} 
+\subsubsection{Frequent Updates} 
 With smaller batches, 
 the model weights are updated more frequently, 
 which can lead to faster learning initially. 

@@ -31,6 +31,7 @@ def load_mnist_data(
     file_path: str,  # Path to the dataset file.
     from_save=False,  # Whether to load from a saved NumPy file.
     sort_by_label=False,  # Whether to sort the data by label.
+    sparse=False,  # Whether to load the data as sparse matrices.
 ) -> tuple:  # Tuple containing the normalized images and their one-hot encoded labels.
     """
     Loads the MNIST dataset from a given file path.
@@ -52,6 +53,7 @@ def load_mnist_data(
 
     if not from_save:
         try:
+            print("trying with file_path : ", file_path)
             if sort_by_label:
                 print("sort_by_label : ", sort_by_label)
                 file_path = sort_csv_file(file_path, sort_by_label)
@@ -88,21 +90,60 @@ class NeuralNetwork:
         output_size: int,  # output neurons quantity
         hidden_activation_function: str,  # activation function
         output_activation_function: str = "softmax",  # activation function
+        weights_file_path=None,  # path to the weights file
     ):
         """initializes the weights
         of the neural network
         with a normal distribution
         """
         self.input_size = input_size
-        self.hidden_size = hidden_size
         self.output_size = output_size
         self.hidden_activation_function = hidden_activation_function
         self.output_activation_function = output_activation_function
 
-        # input hidden is the output of the input layer
-        self.weights_input_hidden = np.random.randn(input_size, hidden_size)
-        # hidden output is the output of the hidden layer
-        self.weights_hidden_output = np.random.randn(hidden_size, output_size)
+        if weights_file_path:
+            self.load_weights(weights_file_path)
+            self.hidden_size = self.weights_input_hidden.shape[1]
+        else:
+            self.hidden_size = hidden_size
+            # input hidden is the output of the input layer
+            # np.random.randn() returns a sample (or samples) from the “standard normal” distribution.
+            # possible values are between -1 and 1
+            self.weights_input_hidden = np.random.randn(input_size, hidden_size)
+            # print("self.weights_input_hidden.shape : ", self.weights_input_hidden.shape)
+            # print("self.weights_input_hidden : ", self.weights_input_hidden)
+            # hidden output is the output of the hidden layer
+            self.weights_hidden_output = np.random.randn(hidden_size, output_size)
+
+    def print_weights(self, weights):
+            for i in range(weights.shape[0]):
+                for j in range(weights.shape[1]):
+                    print(weights[i][j])
+    def save_weights(self, file_path):
+        """
+        Saves the current weights of the neural network to a file.
+
+        Parameters:
+        file_path (str): The file path where the weights will be saved.
+        """
+        np.savez(
+            file_path,
+            weights_input_hidden=self.weights_input_hidden,
+            weights_hidden_output=self.weights_hidden_output,
+        )
+        print(f"Weights saved to {file_path}")
+
+    def load_weights(self, file_path):
+        """
+        Loads weights from a file and initializes the neural network with them.
+
+        Parameters:
+        file_path (str): The file path from which the weights will be loaded.
+        """
+        data = np.load(file_path)
+        self.weights_input_hidden = data["weights_input_hidden"]
+        self.weights_hidden_output = data["weights_hidden_output"]
+        print(f"Weights loaded from {file_path}")
 
     def tanh(
         self, x: np.ndarray  # input data
@@ -246,7 +287,7 @@ class NeuralNetwork:
         # 𝑊𝑜 = 𝑊𝑜 − 𝜇(𝑦𝑜 × 𝑒𝑜)
         self.weights_hidden_output -= learning_rate * d_weights_hidden_output
 
-        self.accuracy = (
+        self.fit = (
             np.sum(np.argmax(y_one_hot, axis=1) == np.argmax(self.model_output, axis=1))
             / y_one_hot.shape[0]
         )
@@ -277,8 +318,10 @@ class NeuralNetwork:
         y_one_hot: np.ndarray,  # one-hot encoded labels
         epochs=100,  # number of training epochs
         learning_rate=0.01,  # learning rate
+        learning_rate_adaptative=False,
         batch_size=32,  # batch size
         # batch_size=1000,  # batch size
+        weights_save_path=None,  # path to save the weights
     ):
         """
         Trains the neural network.
@@ -291,17 +334,19 @@ class NeuralNetwork:
         self.learning_rate = learning_rate
         learning_rate_decay = learning_rate / epochs
         # self.accuracy = 1 - learning_rate
-        self.accuracy = 0.0
+        self.fit = 0.0
 
-        best_accuracy = 0.0
+        best_fit = 0.0
         best_weights_input_hidden = None
         best_weights_hidden_output = None
 
         for epoch in range(epochs):
-            # reducing the learning rate to reach near 0
-            learning_rate = self.learning_rate * (1 - self.accuracy) ** 10
+            if learning_rate_adaptative:
+                # reducing the learning rate to reach near 0
+                learning_rate = self.learning_rate * ((1 - self.fit) ** (100+epoch))
+                # learning_rate = self.learning_rate * (1 - self.fit) ** self.hidden_size
             print(
-                f"epoch : {epoch} ; learning_rate : {learning_rate} ; accuracy : {self.accuracy}"
+                f"epoch : {epoch} ; learning_rate : {learning_rate} ; fit : {self.fit}"
             )
             # Shuffle the dataset
             permutation = np.random.permutation(X.shape[0])
@@ -316,23 +361,39 @@ class NeuralNetwork:
                 self.forward(x_batch)
                 loss = self.backward(x_batch, y_batch, learning_rate)
 
-            print(f"Epoch {epoch}, Loss: {loss}, Accuracy: {self.accuracy}")
+            print(f"Epoch {epoch}, Loss: {loss}, fit: {self.fit}")
             if epoch % 10 == 0:
                 print(f"Epoch {epoch}, Loss: {loss}")
-            if loss < 0.01:
-                print("accuracy : ", self.accuracy)
-                break
-            if self.accuracy > best_accuracy:
-                best_accuracy = self.accuracy
+            if self.fit > best_fit:
+                best_fit = self.fit
                 best_weights_input_hidden = self.weights_input_hidden.copy()
                 best_weights_hidden_output = self.weights_hidden_output.copy()
+            if loss < 0.000001:
+                print("fit : ", self.fit)
+
+                weights_save_path = (
+                    weights_save_path 
+                    + "_loss:"
+                    + str(loss)
+                    + "_fit:"
+                    + str(self.fit) 
+                    + str(date.today()) 
+                    + str(time.strftime("%H%M%S"))
+                )
+                self.save_weights(weights_save_path)
+                break
 
         # Restore the best state of the network
         self.weights_input_hidden = best_weights_input_hidden
         self.weights_hidden_output = best_weights_hidden_output
-        self.accuracy = best_accuracy
+        self.fit = best_fit
 
-        print(f"Best accuracy: {self.accuracy}")
+        print(f"Best fit: {self.fit}")
+        if weights_save_path:
+            weights_save_path = (
+                weights_save_path + self.fit + date.today() + time.strftime("%H%M%S")
+            )
+            self.save_weights(weights_save_path)
 
     def predict(self, X: np.ndarray):  # input data
         """
@@ -344,6 +405,22 @@ class NeuralNetwork:
         self.forward(X)
         # return max value of each row
         return np.argmax(self.model_output, axis=1)
+
+    def calculate_accuracy(self, X: np.ndarray, y_true: np.ndarray) -> float:
+        """
+        Calculates the accuracy of the neural network on a given dataset.
+
+        Parameters:
+        X (np.ndarray): The input data.
+        y_true (np.ndarray): The true labels, expected to be one-hot encoded.
+
+        Returns:
+        float: The accuracy of the model.
+        """
+        predictions = self.predict(X)
+        correct_predictions = np.sum(predictions == np.argmax(y_true, axis=1))
+        accuracy = correct_predictions / X.shape[0]
+        return accuracy
 
     def visualize_prediction(
         self,
@@ -457,9 +534,13 @@ class NeuralNetwork:
         self,
         X: np.ndarray,  # Input data
         y: np.ndarray,  # Target labels
+        X_test: np.ndarray,  # Input data for testing
+        y_test: np.ndarray,  # Target labels for testing
         learning_rates: list,  # List of learning rates to test
-        epochs_list: list,  # List of numbers of epochs to test
-        hidden_sizes: list,  # List of hidden layer sizes to test
+        learning_rate_adaptative=False,
+        epochs_list: list =[1],  # List of numbers of epochs to test
+        hidden_sizes: list =[784],  # List of hidden layer sizes to test
+        batch_size=32,  # Batch size
         weights_random_samples=10,  # Number of random samples of weights to test
     ) -> dict:
         """
@@ -470,6 +551,7 @@ class NeuralNetwork:
         """
 
         results = {}
+        epochs_max = max(epochs_list) #todo
 
         for lr in learning_rates:
             print(f"LR: {lr}")
@@ -493,8 +575,33 @@ class NeuralNetwork:
                         self.weights_input_hidden = weights_input_hidden
                         self.weights_hidden_output = weights_hidden_output
 
+                        weights_save_path = (
+                            "weights/weights_"
+                            + self.hidden_activation_function
+                            + "_"
+                            + self.output_activation_function
+                            + "_"
+                            + str(lr)
+                            # + "_"
+                            # + str(epochs)
+                            + "_"
+                            + str(hidden_size)
+                            # + "_"
+                            # + str(sample)
+                            # + "_"
+                        )
                         # Train the network
-                        self.train(X, y, epochs=epochs, learning_rate=lr)
+                        self.train(X, y, 
+                                   epochs=epochs, 
+                                   learning_rate=lr, 
+                                   learning_rate_adaptative=learning_rate_adaptative,
+                                   batch_size=32,
+                                   weights_save_path=weights_save_path,
+                                #    keep_best_weights=False
+                                   )
+
+                        # Test the network
+                        self.accuracy = self.calculate_accuracy(X_test, y_test)
 
                         # Record the accuracy
                         current_accuracy = self.accuracy
@@ -624,7 +731,10 @@ if __name__ == "__main__":
         from_save=True,
         #    sort_by_label=True
         sort_by_label=False,
+        sparse=False,
     )
+    X_test, y_test = load_mnist_data("src/mnist_test.csv", 
+                                     from_save=True)
 
     # # X.shape[0] = number of rows, X.shape[1] = number of columns
     input_size = X.shape[1]  # 784 = 28 * 28
@@ -641,30 +751,34 @@ if __name__ == "__main__":
         OUTPUT_SIZE,
         hidden_activation_function,
         output_activation_function,
+        # weights_file_path="weights",
     )
     e = 10
     mu = 0.03
-    nn.train(
-        X,
-        y,
-        epochs=e,
-        learning_rate=mu,
-    )
+    # nn.train(
+    #     X,
+    #     y,
+    #     epochs=e,
+    #     learning_rate=mu,
+    #     batch_size=32,
+    #     weights_save_path="weights/weights_",
+    # )
 
-    X_test, y_test = load_mnist_data("mnist_test.csv", from_save=True)
-    nn.confusion_matrix(
-        X_test,
-        y_test,
-    )
-    nn.visualize_predictions(X_test, y_test, 10)
+    # nn.confusion_matrix(
+    #     X_test,
+    #     y_test,
+    # )
+    # nn.visualize_predictions(X_test, y_test, 10)
 
     # learning_rates = [0.001, 0.01, 1]
     # learning_rates = [0.0001, 0.001, 0.01, 0.05, 0.1]
-    learning_rates = [0.0001, 0.01, 0.02, 0.025, 0.03, 0.04, 0.1]
+    # learning_rates = [0.0000001, 0.0001, 0.02, 0.025, 0.03, 0.1]
+    # learning_rates = [0.02, 0.025, 0.03]
+    learning_rates = reversed([0.02, 0.025, 0.03])
     # epochs_list = [10, 100, 1000]
     # epochs_list = [1, 10, 100]
-    # epochs_list = [100, 10, 1]
-    epochs_list = [10, 1]
+    epochs_list = [100, 10, 1]
+    # epochs_list = [10, 1]
     # epochs_list = [1]
     # epochs_list = [1, 2, 3]
     # epochs_list = (value for value in np.arange(100, 1000, 100))
@@ -673,17 +787,23 @@ if __name__ == "__main__":
     # hidden_sizes = [1, 28, 21952]
     # hidden_sizes = [21952]
     # hidden_sizes = [21952, 28, 1]
-    hidden_sizes = [784, 56, 28]
-    # hidden_sizes = [784]
+    # hidden_sizes = [784, 56, 28]
+    hidden_sizes = [784]
     # hidden_sizes = [14, 28, 784]
     batch_size = 32
 
-    # results = nn.test_combinations(X,
-    #                                y,
-    #                                learning_rates,
-    #                                epochs_list,
-    #                                hidden_sizes,
-    #                                batch_size=batch_size,
-    #                                weights_random_samples=10
-    #                                )
-    # nn.plot_results(results)
+    results = nn.test_combinations(
+        X,
+        y,
+        X_test,
+        y_test,
+        learning_rates,
+        learning_rate_adaptative=True,
+
+        epochs_list = epochs_list,
+        hidden_sizes = hidden_sizes,
+        batch_size=batch_size,
+        # weights_random_samples=10,
+        weights_random_samples=1,
+    )
+    nn.plot_results(results)
