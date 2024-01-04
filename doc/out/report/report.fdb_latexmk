@@ -1,13 +1,13 @@
 # Fdb version 4
-["bibtex report"] 1704241074 "report.aux" "report.bbl" "report" 1704241077 0
+["bibtex report"] 0 "report.aux" "report.bbl" "report" 1704393068 -1
   "C:/Users/bourg/AppData/Local/Programs/MiKTeX/bibtex/bib/feupphdteses/references.bib" 1366808100 2206 985e03fb36d872d306e76cfacc160693 ""
   "C:/Users/bourg/AppData/Local/Programs/MiKTeX/bibtex/bst/bibtex/plain.bst" 1291864736 20613 bd3fbfa9f64872b81ac57a0dd2ed855f ""
-  "report.aux" 1704241076 6249 d7bcf0d9ede1fe65fc03902941b6f670 "pdflatex"
+  "report.aux" 1704393067 5659 ca8c7e72e39530e33da8a987ba653b70 "pdflatex"
   (generated)
   "report.bbl"
   "report.blg"
   (rewritten before read)
-["pdflatex"] 1704241075 "d:/bourg/Documents/GitHub/artificial-intelligence-machine-learning/doc/out/report/report.tex" "report.pdf" "report" 1704241077 0
+["pdflatex"] 1704393066 "d:/bourg/Documents/GitHub/artificial-intelligence-machine-learning/doc/out/report/report.tex" "report.pdf" "report" 1704393068 0
   "C:/Users/bourg/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map" 1704217410 279778 aa8c8b08a6e6f5b912fcdb1120e47ad8 ""
   "C:/Users/bourg/AppData/Local/MiKTeX/miktex/data/le/pdftex/pdflatex.fmt" 1695220016 24142036 d6c2244ed847199d8344867affd5c17b ""
   "C:/Users/bourg/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/cm-super/cm-super-ts1.enc" 1001771820 2900 1537cc8184ad1792082cd229ecc269f4 ""
@@ -96,15 +96,13 @@
   "C:/Users/bourg/AppData/Local/Programs/MiKTeX/tex/latex/refcount/refcount.sty" 1576433952 9878 9e94e8fa600d95f9c7731bb21dfb67a4 ""
   "C:/Users/bourg/AppData/Local/Programs/MiKTeX/tex/latex/rerunfilecheck/rerunfilecheck.sty" 1657797096 9714 ba3194bd52c8499b3f1e3eb91d409670 ""
   "C:/Users/bourg/AppData/Local/Programs/MiKTeX/tex/latex/url/url.sty" 1388490452 12796 8edb7d69a20b857904dd0ea757c14ec9 ""
-  "d:/bourg/Documents/GitHub/artificial-intelligence-machine-learning/doc/out/report/report.tex" 1704241069 7418 d0d3be9022b314e12edb6bbc06e3074e ""
+  "d:/bourg/Documents/GitHub/artificial-intelligence-machine-learning/doc/out/report/report.tex" 1704393065 7643 624e4c85d79eaa1103b8792c0bde4ef1 ""
   "media/confusion/confusion_matrix_activation_functions_tanh_softmax_hidden_layer_size_128_epochs_100_learning_rate_0.04_loss_0.7846220348759285.png" 1703176904 85736 b5574223d35fb84c59e304b56e6c3602 ""
-  "media/convolution/Figure_1.png" 1703176689 35872 e60928f934fc802eb4a53dc463feeb04 ""
-  "media/prediction/4.png" 1703240422 30636 769ef8cc1872f00d9c52a1c1ced6f941 ""
   "media/training/results_plot_activation_functions_tanh_softmax_2023-12-29162932.png" 1703863772 254563 c9c7773b2f7e55c2ca7e97f321c6753c ""
-  "report.aux" 1704241076 6249 d7bcf0d9ede1fe65fc03902941b6f670 "pdflatex"
-  "report.bbl" 1704241075 52 0eba253fc001332e731e8aba3f23127b "bibtex report"
-  "report.out" 1704241076 5181 e6bae62b85ff18ee2f9174e923f6ccf5 "pdflatex"
-  "report.tex" 1704241069 7418 d0d3be9022b314e12edb6bbc06e3074e ""
+  "report.aux" 1704393067 5659 ca8c7e72e39530e33da8a987ba653b70 "pdflatex"
+  "report.bbl" 1704376162 52 0eba253fc001332e731e8aba3f23127b "bibtex report"
+  "report.out" 1704393067 4886 9f6ee0fb2d725c0dbec024ae2161e7eb "pdflatex"
+  "report.tex" 1704393065 7643 624e4c85d79eaa1103b8792c0bde4ef1 ""
   (generated)
   "report.aux"
   "report.log"

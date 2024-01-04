@@ -58,7 +58,8 @@ Smaller batches often provide a regularizing effect
  which can help the network to escape 
  local minima in the loss landscape and 
  explore a broader range of solutions.
-We finally decided to use batches of 32 samples each.
+It requires to lower the learning rate, proportionally with the batch size.
+We finally decided to use batches of 60 samples each.
 
 \subsubsection{Frequent Updates} 
 With smaller batches, 
@@ -90,14 +91,15 @@ where large updates can help to make significant progress.
 \end{figure}
 \subsubsection{Accuracy}
 \subsubsection{Prediction}
-\begin{figure}
-    \centering
-    \includegraphics[width=\textwidth]{media/prediction/4.png}
-    \caption{Prediction}
-    \label{fig:Prediction}
-\end{figure}
+% \begin{figure}
+%     \centering
+%     \includegraphics[width=\textwidth]{media/prediction/4.png}
+%     \caption{Prediction}
+%     \label{fig:Prediction}
+% \end{figure}
 \subsection{Convolution}
-98.8\% accuracy
+With a convolutional model, we achieved
+98.8\% accuracy.
 \subsubsection{Feature Learning}
 Unlike traditional machine learning algorithms,
 CNNs automatically detect important features without
@@ -107,11 +109,9 @@ CNNs automatically detect important features without
  from the images.
 
 \subsubsection{Spatial Hierarchy of Features}
-CNNs are adept at understanding the spatial hierarchy 
-in images. 
 Early layers might detect simple features like edges or corners,
  while deeper layers can recognize more complex features 
- like shapes or specific objects. 
+ like curvature strength.
 This hierarchical approach is particularly effective for
 image classification.
 
@@ -119,7 +119,7 @@ image classification.
 In CNNs, the same weights (filters) are shared across
 different parts of an image. 
 This not only reduces the number of parameters the network
-needs to learn, making the model more efficient, 
+needs to learn, 
 but also allows the network to recognize features
 regardless of their position in the input image.
 
@@ -132,13 +132,6 @@ in CNNs, which help in making the detection of features
 invariant to small changes in the position of the feature
 in the image.
 
-\subsubsection{Efficient Handling of High-Dimensional Data}
-Images are high-dimensional data 
-(considering each pixel as a dimension). 
-CNNs can manage this high dimensionality better 
-than many traditional algorithms, 
-which often struggle with the curse of dimensionality.
-
 \subsubsection{Specialization for Image Data}
 The convolutional layers are particularly well-suited 
 for processing images pixels that are spatially close 
@@ -148,12 +141,12 @@ characters, in our case digits, images.
 
 \subsubsection{Confusion Matrix}
 % graph:
-\begin{figure}
-    \centering
-    \includegraphics[width=\textwidth]{media/convolution/Figure_1.png}
-    \caption{Confusion Matrix for convolutional model.}
-    \label{fig:convolution_confusion}
-\end{figure}
+% \begin{figure}
+%     \centering
+%     \includegraphics[width=\textwidth]{media/convolution/Figure_1.png}
+%     \caption{Confusion Matrix for convolutional model.}
+%     \label{fig:convolution_confusion}
+% \end{figure}
 
 \section{Analysis}
 % Discuss the results, what they mean, and any conclusions you can draw
@@ -172,22 +165,29 @@ Otherwise, overfitting occurs.
 \subsection{Convolutional Model}
 The convolutional model particularly excelled in 
 image classification tasks.
+
 \section{Conclusion}
 % Summarize the main findings and future work
 \subsection{Main Findings}
-The study demonstrates the effectiveness of 
-neural networks in digit classification. 
+To be concise, 
+with a parameter being more important than another, 
+one being useless if the previous others are badly set, 
+we will use the following order:
+\begin{enumerate}
+    \item Learning Rate: precision maximum over an infinite of values, it makes the global maxima search very fragile.
+    \item Hidden Layer Size: the bigger the better
+    \item Epochs: most of the time, much more than epochs do not change accuracy that much,  because of overfitting.
+\end{enumerate}
 \subsection{Tools}
 \subsubsection{Assistance}
 \begin{itemize}
     \item ChatGPT
 \end{itemize}
 \subsection{Future Work}
-We will continue exploring 
-deeper and evolving architectures and 
-implementing advanced techniques like 
+We will continue Implementing advanced techniques like filtering images on sparse matrices,
 dropout and batch normalization at different intensities
-at particular network states.
+at particular network states and exploring convolutional models and
+deeper pattern finding and evolving architectures.
 
 
 \section{References}

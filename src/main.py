@@ -123,7 +123,7 @@ class NeuralNetwork:
         hidden_size=None,
         weights_file_path=None,
     ):
-        self.loss = 0.0
+        self.loss = float("inf")
         self.fit = 0.0
         self.loss_history = []
         self.fit_history = []
@@ -144,6 +144,55 @@ class NeuralNetwork:
             self.weights_hidden_output = np.random.randn(
                 self.hidden_size, self.output_size
             )
+
+    def get_details(
+        self,
+        mode="plot",
+        include_hidden_size=True,
+        include_hidden_activation=True,
+        include_output_activation=True,
+        include_batch_rate=True,
+        include_learning_rate=True,
+        include_epochs=True,
+        include_loss=True,
+        include_fit=True,
+    ):
+        """
+        Returns a string containing details about the network.
+        Parameters:
+        mode (str): 'plot' for plot annotation, 'filename' for file naming.
+        include_* (bool): Flags to control the inclusion of each attribute.
+        """
+        newline_char = "\n" if mode == "plot" else "_"
+        colon_char = ":" if mode == "plot" else "_"
+
+        details = ""
+
+        if self.hidden_size is not None and include_hidden_size:
+            details += f"{newline_char}hidden{colon_char}{self.hidden_size}"
+
+        if self.hidden_activation_function is not None and include_hidden_activation:
+            details += f"{newline_char}Activations{colon_char}{newline_char}hidden{colon_char}{self.hidden_activation_function}"
+
+        if self.output_activation_function is not None and include_output_activation:
+            details += (
+                f"{newline_char}output{colon_char}{self.output_activation_function}"
+            )
+
+        if self.batch_rate is not None and include_batch_rate:
+            details += f"{newline_char}Batch_rate{colon_char}{self.batch_rate}"
+
+        if self.learning_rate is not None and include_learning_rate:
+            details += f"{newline_char}Learning_rate{colon_char}{self.learning_rate}"
+        if self.epochs is not None and include_epochs:
+            details += f"{newline_char}Epochs{colon_char}{self.epochs}"
+        if self.loss is not None and include_loss:
+            details += f"{newline_char}Loss{colon_char}{self.loss}"
+
+        if self.fit is not None and include_fit:
+            details += f"{newline_char}Fit{colon_char}{self.fit}"
+
+        return details
 
     def print_weights(self, weights):
         for i in range(weights.shape[0]):
@@ -346,7 +395,8 @@ class NeuralNetwork:
         epoch=None,
         neuron_quantity_factor=True,
         batch_rate_factor=True,
-        loss_factor=True,
+        loss_factor=1.0,
+        learning_rate_adaptation=1.0,
     ):
         learning_rate = self.learning_rate
         if epoch_factor:
@@ -355,12 +405,14 @@ class NeuralNetwork:
             print("exponential decayed learning_rate : ", learning_rate)
         if neuron_quantity_factor:
             # neuron quantity augments learning rate
-            learning_rate = learning_rate * self.hidden_size
+            learning_rate = learning_rate * (
+                self.hidden_size**learning_rate_adaptation
+            )
             print("neuron quantity adapted learning_rate : ", learning_rate)
-        if batch_rate_factor:
-            # batchize augments learning rate
-            learning_rate = learning_rate ** (batch_rate)
-            print("batch rate adapted learning_rate : ", learning_rate)
+        # if batch_rate_factor:
+        #     # batchize augments learning rate
+        #     learning_rate = learning_rate ** (batch_rate)
+        #     print("batch rate adapted learning_rate : ", learning_rate)
         # fitness reduces exponentially learning rate
         # if self.fit < 1:
         #     learning_rate = learning_rate * ((1 - self.fit) ** 2)
@@ -369,12 +421,12 @@ class NeuralNetwork:
         if loss_factor:
             # reducing the learning rate to reach near 0
             if self.loss == float("inf"):
-                loss_factor = 1
+                loss_factor = 1.0
             else:
                 # ensure loss is under 1
                 print("loss : ", self.loss)
-                loss_factor = self.loss / 10
-                loss_factor = loss_factor ** 10
+                loss_below_0 = self.loss / 10
+                loss_factor = loss_below_0 ** (loss_factor**loss_factor)
             print("loss_factor : ", loss_factor)
             learning_rate = learning_rate * loss_factor
             print("loss adapted learning_rate : ", learning_rate)
@@ -384,9 +436,12 @@ class NeuralNetwork:
         self,
         X: np.ndarray,  # input data
         y_one_hot: np.ndarray,  # one-hot encoded labels
+        x_test: np.ndarray = None,
+        y_test: np.ndarray = None,
         epochs=100,  # number of training epochs
         learning_rate=0.01,  # learning rate
-        learning_rate_adaptative=True,
+        learning_rate_adaptation=1.0,
+        loss_factor=1.0,
         batch_rate=0.1,  # batch size
         show_training_progress=False,  # whether to show the training progress
         weights_save_path=None,  # path to save the weights
@@ -408,7 +463,6 @@ class NeuralNetwork:
         self.batch_rate = batch_rate
         initial_lr = learning_rate
         # self.fit = 0.0
-        self.loss = float("inf")
 
         best_fit = 0.0
         best_loss = float("inf")
@@ -417,15 +471,16 @@ class NeuralNetwork:
             best_weights_hidden_output = None
 
         for epoch in range(epochs):
-            print(
-                f"epoch : {epoch}"
-            )
-            if learning_rate_adaptative:
-                learning_rate = self.adapt_learning_rate(epoch=epoch,
-                                                            epoch_factor=False,
-                                                            neuron_quantity_factor=False,
-                                                            batch_rate_factor=False,
-                                                            loss_factor=True)
+            print(f"epoch : {epoch}")
+            if learning_rate_adaptation:
+                learning_rate = self.adapt_learning_rate(
+                    epoch=epoch,
+                    epoch_factor=False,
+                    neuron_quantity_factor=False,
+                    batch_rate_factor=False,
+                    loss_factor=loss_factor,
+                    learning_rate_adaptation=learning_rate_adaptation,
+                )
             print(
                 f"learning_rate : {learning_rate}"
                 # ; fit : {self.fit}"
@@ -454,6 +509,10 @@ class NeuralNetwork:
             print(f"best_batch_loss : {best_batch_loss}")
             self.loss_history.append(self.loss)
             self.fit_history.append(self.fit)
+            if x_test is not None and y_test is not None:
+                predictions = self.predict(x_test)
+                self.accuracy = self.calculate_accuracy(predictions, y_test)
+                self.accuracy_history.append(self.accuracy)
             print(f"Epoch {epoch}, Loss: {loss}, fit: {self.fit}")
             if epoch % 10 == 0:
                 print(f"Epoch {epoch}, Loss: {loss}")
@@ -493,59 +552,11 @@ class NeuralNetwork:
         if show_training_progress:
             self.plot_training_progress()
 
-    def get_details(
-        self,
-        mode="plot",
-        include_hidden_size=True,
-        include_hidden_activation=True,
-        include_output_activation=True,
-        include_batch_rate=True,
-        include_learning_rate=True,
-        include_loss=True,
-        include_fit=True,
-    ):
-        """
-        Returns a string containing details about the network.
-        Parameters:
-        mode (str): 'plot' for plot annotation, 'filename' for file naming.
-        include_* (bool): Flags to control the inclusion of each attribute.
-        """
-        newline_char = "\n" if mode == "plot" else "_"
-        colon_char = ":" if mode == "plot" else "_"
-
-        details = ""
-
-        if self.hidden_size is not None and include_hidden_size:
-            details += f"{newline_char}hidden{colon_char}{self.hidden_size}"
-
-        if self.hidden_activation_function is not None and include_hidden_activation:
-            details += f"{newline_char}Activations{colon_char}{newline_char}hidden{colon_char}{self.hidden_activation_function}"
-
-        if self.output_activation_function is not None and include_output_activation:
-            details += (
-                f"{newline_char}output{colon_char}{self.output_activation_function}"
-            )
-
-        if self.batch_rate is not None and include_batch_rate:
-            details += f"{newline_char}Batch_rate{colon_char}{self.batch_rate}"
-
-        if self.learning_rate is not None and include_learning_rate:
-            details += f"{newline_char}Learning_rate{colon_char}{self.learning_rate}"
-
-        if self.loss is not None and include_loss:
-            details += f"{newline_char}Loss{colon_char}{self.loss}"
-
-        if self.fit is not None and include_fit:
-            details += f"{newline_char}Fit{colon_char}{self.fit}"
-
-        return details
-
     def plot_training_progress(self):
         plt.figure(figsize=(8, 6))
 
         # Plotting both loss and fit on the same subplot
         plt.plot(self.loss_history, label="Loss", color="blue")
-        plt.plot(self.fit_history, label="Fit", color="red")
 
         plt.title("Training Progress")
         plt.xlabel("Epoch")
@@ -557,6 +568,12 @@ class NeuralNetwork:
         ax2.plot(self.fit_history, label="Fit", color="red")
         ax2.set_ylabel("Fit", color="red")
         ax2.tick_params(axis="y", labelcolor="red")
+
+        # Third y-axis for accuracy (if scales are very different)
+        ax3 = plt.gca().twinx()
+        ax3.plot(self.accuracy_history, label="Accuracy", color="green")
+        ax3.set_ylabel("Accuracy", color="green")
+        ax3.tick_params(axis="y", labelcolor="green")
 
         # Global title with network properties
         global_title = "Neural Network Training Progress"
@@ -572,6 +589,13 @@ class NeuralNetwork:
             va="top",
             fontsize=10,
             color="gray",
+        )
+
+        # Save the plot
+        file_path = "doc/out/progress/" + self.get_details(mode="filename") + ".png"
+        plt.savefig(
+            file_path,
+            bbox_inches="tight",  # prevents the labels from being cut off
         )
 
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
@@ -742,7 +766,8 @@ class NeuralNetwork:
         X_test: np.ndarray,  # Input data for testing
         y_test: np.ndarray,  # Target labels for testing
         learning_rates: list[float] = [0.01],  # List of learning rates to test
-        learning_rate_adaptative=False,
+        learning_rate_adaptation: float = 1.0,
+        loss_factor: float = 1.0,
         epochs_list: list = [1],  # List of numbers of epochs to test
         hidden_sizes: list = [784],  # List of hidden layer sizes to test
         batch_rate=0.1,  # Batch size
@@ -779,7 +804,8 @@ class NeuralNetwork:
                             y,
                             epochs=epochs - epochs_done,
                             learning_rate=lr,
-                            learning_rate_adaptative=learning_rate_adaptative,
+                            learning_rate_adaptation=learning_rate_adaptation,
+                            loss_factor=loss_factor,
                             batch_rate=batch_rate,
                             show_training_progress=show_training_progress,
                             weights_save_path=weights_save_path,
@@ -800,8 +826,9 @@ class NeuralNetwork:
                         accuracy_mean_list[epochs_list.index(epochs)] += (
                             current_accuracy / weights_random_samples
                         )
-
+                print(f"accuracy_mean_list : {accuracy_mean_list}")
                 for epochs in epochs_list:
+                    print(f"Epochs: {epochs}")
                     epoch_accuracy_mean = accuracy_mean_list[epochs_list.index(epochs)]
                     results[(lr, epochs, hidden_size)] = epoch_accuracy_mean
 
@@ -839,11 +866,12 @@ class NeuralNetwork:
         # Logarithmic transformation
         log_learning_rates = np.log10(learning_rates)
         epochs = np.array([k[1] for k in results.keys()])
+        epochs_log = np.log10(epochs)
         hidden_sizes = np.array([k[2] for k in results.keys()])
+        hidden_sizes_log = np.log10(hidden_sizes)
         accuracies = np.array(list(results.values()))
         accuracy_max = accuracies.max()
         accuracy_min = accuracies.min()
-
 
         # Calculate point sizes (e.g., normalize accuracies and scale them)
         # Check if all accuracies are the same
@@ -859,17 +887,17 @@ class NeuralNetwork:
 
         print("normalized_accuracies : ", normalized_accuracies)
 
-        base_size = 50  # Base size for the smallest points
+        base_size = 10  # smallest point
         scaled_point_sizes = (
-            base_size + 1000 * normalized_accuracies
+            base_size + (normalized_accuracies * 10) ** 2
         )  # Scale up the normalized accuracies
 
         # Scatter plot with dynamic point sizes
         img = ax.scatter(
             # learning_rates,
             log_learning_rates,
-            epochs,
-            hidden_sizes,
+            epochs_log,
+            hidden_sizes_log,
             c=accuracies,
             s=scaled_point_sizes,  # Apply calculated sizes here
             # cmap=plt.viridis()
@@ -877,53 +905,50 @@ class NeuralNetwork:
             cmap="gist_rainbow",
         )
         fig.colorbar(img)
-        # Set the tick labels for the x-axis to represent the original learning rates
-        ax.set_xticks(log_learning_rates)
-        ax.set_xticklabels(learning_rates)
 
         # Add labels and title
-        ax.set_xlabel("Learning Rate")
-        ax.set_ylabel("Epochs")
-        ax.set_zlabel("Hidden Layer Size")
-        ax.set_title(
-            f"Hidden activation: {self.hidden_activation_function}"
-            + f"; output activation:{self.output_activation_function}"
-            + "\n"
-            + "; accuracy min and max: "
-            + f"{accuracy_min}"
-            + " and "
-            + f"{accuracy_max}"
-        )
+        ax.set_xlabel("Learning Rate log")
+        # Set the tick labels for the x-axis to represent the original learning rates
+        # ax.set_xticks(log_learning_rates)
+        # ax.set_xticklabels(learning_rates)
+        ax.set_ylabel("Epochs log")
+        ax.set_zlabel("Hidden Layer Size log")
+        ax.set_title("Parameters combinations Accuracies")
 
         # Set axis limits
-        ax.set_xlim([learning_rates.min(), learning_rates.max()])
+        # ax.set_xlim([learning_rates.min(), learning_rates.max()])
+        ax.set_xlim([log_learning_rates.min(), log_learning_rates.max()])
         # ax.set_xscale("log")
-        ax.set_ylim([epochs.min(), epochs.max()])
+        ax.set_ylim([epochs_log.min(), epochs_log.max()])
         # ax.set_yscale("normal")
-        ax.set_zlim([hidden_sizes.min(), hidden_sizes.max()])
+        ax.set_zlim([hidden_sizes_log.min(), hidden_sizes_log.max()])
 
         # Draw lines
-        for lr, ep, hs, acc in zip(learning_rates, epochs, hidden_sizes, accuracies):
+        # for lr, ep, hs, acc in zip(learning_rates, epochs, hidden_sizes, accuracies):
+        for lr, ep, hs, acc in zip(
+            log_learning_rates, epochs_log, hidden_sizes_log, accuracies
+        ):
             # color = plt.cm.viridis(acc)
             color = plt.cm.gist_rainbow(acc)
             ax.plot(
                 [lr, lr],
                 [ep, ep],
-                [hidden_sizes.min(), hs],
+                [hidden_sizes_log.min(), hs],
                 color=color,
                 linestyle="--",
                 linewidth=0.5,
             )  # vertical line
             ax.plot(
                 [lr, lr],
-                [epochs.min(), ep],
+                [epochs_log.min(), ep],
                 [hs, hs],
                 color=color,
                 linestyle="--",
                 linewidth=0.5,
             )  # learning rate to epochs
             ax.plot(
-                [learning_rates.min(), lr],
+                # [learning_rates.min(), lr],
+                [log_learning_rates.min(), lr],
                 [ep, ep],
                 [hs, hs],
                 color=color,
@@ -931,8 +956,45 @@ class NeuralNetwork:
                 linewidth=0.5,
             )  # epochs to hidden size
 
+            # lines to the axes
+            # Draw lines to the x-axis
+            ax.plot(
+                [lr, lr],
+                [ep, ep],
+                [ax.get_zlim()[0], hs],
+                color="gray",
+                linewidth=0.5,
+                linestyle="--",
+            )
+            # Draw lines to the y-axis
+            ax.plot(
+                [lr, lr],
+                [ax.get_ylim()[0], ep],
+                [hs, hs],
+                color="gray",
+                linewidth=0.5,
+                linestyle="--",
+            )
+            # Draw lines to the z-axis
+            ax.plot(
+                [ax.get_xlim()[0], lr],
+                [ep, ep],
+                [hs, hs],
+                color="gray",
+                linewidth=0.5,
+                linestyle="--",
+            )
+
+            # Add accuracies
+            ax.text(
+                lr,
+                ep,
+                hs,
+                f"{acc:.2f}",
+                color="black",
+            )
         ax.annotate(
-            f"accuracy max: {accuracy_max}\n{self.get_details()}",
+            f"accuracy max: {accuracy_max}\n{self.get_details(include_hidden_size=False, include_learning_rate=False, include_epochs=False, include_loss=False, include_fit=False)}",
             xy=(0.5, -0.15),
             xycoords="axes fraction",
             ha="left",
@@ -940,20 +1002,6 @@ class NeuralNetwork:
             fontsize=10,
             color="gray",
         )
-        for lr, ep, hs, acc in zip(learning_rates, epochs, hidden_sizes, accuracies):
-            # Adjust the text position to prevent overlap with the points
-            # offset = max(scaled_point_sizes) * 0.05  # example offset
-            # offset set to point radius:
-            # offset = scaled_point_sizes[
-            ax.text(
-                lr,
-                ep,
-                # hs + offset,
-                hs,
-                f"{acc:.2f}",
-                color="black",
-                # color=plt.cm.gist_rainbow(acc),
-            )
         plt.tight_layout()
         # Save and show
         details = self.get_details(
@@ -965,7 +1013,7 @@ class NeuralNetwork:
         )
         plt.savefig(
             "doc/out/accuracy/"
-            + f"accuracy_max_{accuracy_max:.2f}_accuracy_min_{accuracy_min:.2f}_"
+            + f"accuracy_max_{accuracy_max:.2f}_min_{accuracy_min:.2f}_"
             + f"{details}"
             # +f"_{date.today()}{time.strftime('%H%M%S')}
             + ".png",
@@ -1008,6 +1056,8 @@ if __name__ == "__main__":
     # nn.train(
     #     X,
     #     y,
+    #     X_test,
+    #     y_test,
     #     epochs=e,
     #     learning_rate=mu,
     #     batch_size=32,
@@ -1021,23 +1071,23 @@ if __name__ == "__main__":
     # nn.visualize_predictions(X_test, y_test, 10)
 
     learning_rates = [
-        0.0000000000000000000000000000000000000000000000000000000000000001,
-        0.000000000000000000000000000000001,
-        0.00000000000000001,
-        0.0000000001,
-        0.0000001,
-        0.0001,
-        0.001,
-        0.02,
-        0.025,
+        # 0.0000000000000000000000000000000000000000000000000000000000000001,
+        # 0.000000000000000000000000000000001,
+        # 0.00000000000000001,
+        # 0.0000000001,
+        # 0.0000001,
+        # 0.0001,
+        # 0.001,
+        # 0.02,
+        # 0.025,
         0.03,
-        0.1,
-        0.9,
+        # 0.1,
+        # 0.9,
     ]
     epochs_list = [
         1,
-           10,
-        #    100,
+        10,
+        100,
         #    1000
     ]
     hidden_sizes = [
@@ -1047,24 +1097,55 @@ if __name__ == "__main__":
         # 21952,
     ]
 
-    batch_rates = list(reversed([0.001, 0.01, 0.1, 0.2, 0.5, 1.0]))
+    batch_rates = [
+        # 0.0001,
+        0.0005,
+        #0.001,
+        #    0.01,
+        # 0.1,
+        #    0.2,
+        # 0.5,
+        # 1.0,
+    ]
 
-    for batch_rate in batch_rates:
-        print("batch_rate : ", batch_rate)
-        results = nn.test_combinations(
-            X,
-            y,
-            X_test,
-            y_test,
-            learning_rates=learning_rates,
-            learning_rate_adaptative=True,
-            epochs_list=epochs_list,
-            hidden_sizes=hidden_sizes,
-            # batch_rates=batch_rates,
-            batch_rate=batch_rate,
-            # weights_random_samples=10,
-            weights_random_samples=1,
-            show_training_progress=False,
-            weights_save_path="src/weights/weights_",
-        )
-        nn.plot_results(results)
+    loss_factor_exponents = [
+        #1.1,
+         1.5,
+        # 1.8,
+        # 2.0,
+        # 3.0,
+        # 0.1,
+        # 0.5,
+        # 1.0,
+        # 4.0,
+        # 5.0,
+        # 10.0,
+        # 100.0,
+    ]
+
+    # for learning_rate_adaptation in learning_rate_adaptations:
+    #     print("learning_rate_adaptation : ", learning_rate_adaptation)
+    for loss_factor_exponent in loss_factor_exponents:
+        print("loss_factor_exponent : ", loss_factor_exponent)
+        nn.loss_factor = loss_factor_exponent
+        for batch_rate in batch_rates:
+            print("batch_rate : ", batch_rate)
+            results = nn.test_combinations(
+                X,
+                y,
+                X_test,
+                y_test,
+                learning_rates=learning_rates,
+                # learning_rate_adaptation=learning_rate_adaptation,
+                loss_factor=loss_factor_exponent,
+                epochs_list=epochs_list,
+                hidden_sizes=hidden_sizes,
+                # batch_rates=batch_rates,
+                batch_rate=batch_rate,
+                # weights_random_samples=10,
+                weights_random_samples=1,
+                show_training_progress=False,
+                # weights_save_path="src/weights/weights_",
+            )
+            nn.plot_results(results)
+        wait = input("close results ? (y/n) : ")
