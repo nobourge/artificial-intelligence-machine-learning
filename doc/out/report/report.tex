@@ -16,68 +16,36 @@
 
 \maketitle
 
-\begin{abstract}
-% Write your abstract here
-\end{abstract}
-
+\newpage
 \section{Introduction}
-% Introduce the project, its objectives, and significance
-https://medium.com/france-school-of-ai/math%C3%A9matiques-des-r%C3%A9seaux-de-neurones-code-python-613d8e83541
-https://lrpserver.hhi.fraunhofer.de/handwriting-classification
+This report details a neural network's development and analysis for digit recognition using the MNIST dataset, highlighting key findings and future research directions.
 \section{Experimentation Framework}
-% Describe the methodology, including neural network architecture, 
-% forward propagation, error calculation, and backpropagation
-
-\subsection{Neural Network Architecture}
-% Details about the neural network layers, activation functions, etc.
-
-\subsection{Forward Propagation}
-% Explain the forward propagation process
-
-\subsection{Error Calculation}
-% Describe how the error is calculated (mean squared error, etc.)
-
-\subsection{Backpropagation}
-% Explain the backpropagation process for weight updates
-
+For the framework base,
+please see the instructions.
 \subsection{Batching}
-\subsubsection{Lower Memory Requirements}
- Smaller batches require less memory, making it feasible to train models on machines with limited GPU memory. 
- This allows for using more complex models or higher-resolution data.
+We used batching from 0.5 to 1e-5
+to reduce the training process memory need and increase noisy data able accuracy.
+ 
+ \subsection{Learning rate}
+ Reducing the batch size requires to lower the learning rate proportionally.
+ The learning rate can also be augmented with the neurons quantity or the loss
+ and reduced with the epochs or the fitness
 
-When we tried to train the network with the 
-whole dataset on 21000+ neurons, 
-we ran into memory issues.
-We then decided to split the dataset into batches of 100 samples each.
-
-\subsubsection{Better Generalization} 
-We realised that the accuracy was higher than expected with smaller batches.
-Smaller batches often provide a regularizing effect
- and higher generalization performance. 
- This is because each update is noisier, 
- which can help the network to escape 
- local minima in the loss landscape and 
- explore a broader range of solutions.
-It requires to lower the learning rate, proportionally with the batch size.
-We finally decided to use batches of 60 samples each.
-
-\subsubsection{Frequent Updates} 
-With smaller batches, 
-the model weights are updated more frequently, 
-which can lead to faster learning initially. 
-This is especially useful in the early stages of training, 
-where large updates can help to make significant progress.
-
-% Describe the batching process
+ \subsection{Weights}
+\subsubsection{Weight Restoration}
+The network can memorize the training lowest loss weights and revert to the memorized weights. 
 
 \section{Results}
-% Present the results of your experiments
-% Include graphs, tables, and confusion matrix visualizations
 \subsection{Training}
+% \begin{figure}
+%     \centering
+%     \includegraphics[width=0.8\textwidth]{media/training/progress/_hidden_784_Activations_hidden_tanh_output_softmax_Batch_rate_0.01_Learning_rate_0.03_Epochs_100_Loss_0.5568668422941822_Fit_0.7.png}
+%     \label{fig:comparison}
+%     \
+% \end{figure}
 \begin{figure}
     \centering
-    \includegraphics[width=\textwidth]{media/training/results_plot_activation_functions_tanh_softmax_2023-12-29162932.png}
-    \caption{Training comparison results for tanh activation function, softmax output function}
+    \includegraphics[width=0.8\textwidth]{media/training/accuracy_max_0.90_min_0.09__Activations__hidden_tanh_output_softmax_Batch_rate_0.0005_Epochs_89.png}
     \label{fig:comparison}
 \end{figure}
 \subsection{Testing}
@@ -85,114 +53,55 @@ where large updates can help to make significant progress.
 % graph:
 \begin{figure}
     \centering
-    \includegraphics[width=\textwidth]{media/confusion/confusion_matrix_activation_functions_tanh_softmax_hidden_layer_size_128_epochs_100_learning_rate_0.04_loss_0.7846220348759285.png}
-    \caption{Confusion Matrix for tanh activation function, softmax output function, 1 hidden layer of 128 neurons, 100 epochs, 0.04 learning rate, and 0.7846220348759285 loss.}
+    \includegraphics[width=0.8\textwidth]{media/confusion/_hidden_784_Activations_hidden_tanh_output_softmax_Batch_rate_0.0005_Learning_rate_0.03_Epochs_1_Loss_0.12911469931607547_Fit_0.9333333333333333.png}
     \label{fig:confusion}
 \end{figure}
-\subsubsection{Accuracy}
-\subsubsection{Prediction}
-% \begin{figure}
-%     \centering
-%     \includegraphics[width=\textwidth]{media/prediction/4.png}
-%     \caption{Prediction}
-%     \label{fig:Prediction}
-% \end{figure}
 \subsection{Convolution}
 With a convolutional model, we achieved
-98.8\% accuracy.
-\subsubsection{Feature Learning}
-Unlike traditional machine learning algorithms,
-CNNs automatically detect important features without
- any human intervention. 
- This is achieved through the use of filters to the input, 
- enabling the model to learn features directly 
- from the images.
-
-\subsubsection{Spatial Hierarchy of Features}
-Early layers might detect simple features like edges or corners,
- while deeper layers can recognize more complex features 
- like curvature strength.
-This hierarchical approach is particularly effective for
-image classification.
-
-\subsubsection{Parameter Sharing and Local Connectivity}
-In CNNs, the same weights (filters) are shared across
-different parts of an image. 
-This not only reduces the number of parameters the network
-needs to learn, 
-but also allows the network to recognize features
-regardless of their position in the input image.
-
-\subsubsection{Robustness to Image Variations}
-CNNs are less sensitive to variations and distortions 
-in images, such as slight shifts, rotations, 
-and changes in scale. 
-This robustness is due to the pooling layers commonly used
-in CNNs, which help in making the detection of features
-invariant to small changes in the position of the feature
-in the image.
-
-\subsubsection{Specialization for Image Data}
-The convolutional layers are particularly well-suited 
-for processing images pixels that are spatially close 
-to each other, capturing local dependencies effectively.
-This specialization perfectly matches the structure of 
-characters, in our case digits, images.
-
-\subsubsection{Confusion Matrix}
-% graph:
-% \begin{figure}
-%     \centering
-%     \includegraphics[width=\textwidth]{media/convolution/Figure_1.png}
-%     \caption{Confusion Matrix for convolutional model.}
-%     \label{fig:convolution_confusion}
-% \end{figure}
+98.8\% accuracy
+in 1 minute and 40 seconds.
+to compare, the best accuracy we achieved with a non-convolutional model was 91\% in 1 minute and 40 seconds.
 
 \section{Analysis}
-% Discuss the results, what they mean, and any conclusions you can draw
-The results indicate a strong dependency of 
+The "parameters combinations accuracies" results plots indicate a strong dependency of our
 neural network performance on its 
-architecture and 
-hyperparameters. 
-\subsection{Hidden Layer Size impact}
-biggest impact
-\subsection{Learning Rate impact}
-reducing learning rate increases accuracy
-\subsection{Epochs impact}
-augmenting epochs is good only if neurons quantity and learning rate decay are augmented exponentially.
-Otherwise, overfitting occurs.
-
-\subsection{Convolutional Model}
-The convolutional model particularly excelled in 
-image classification tasks.
+size, we can clearly see that color shadind on the vertical axis.
+The learning rate, whose calculation was optimized for 784 neurons and becomes even more fragile with batch size reduction also has a strong impact on the accuracy.
+Even at this same size, a milli scale variation separates near- maximum and maximum accuracy.
+During training, micro scale variations determines the accuracy evolution. 
+The epochs quantity allows the accuracy to evolve, but only positively if the learning rate is adapted.
+Otherwise, stagnation or overfitting occurs.
 
 \section{Conclusion}
-% Summarize the main findings and future work
 \subsection{Main Findings}
 To be concise, 
-with a parameter being more important than another, 
-one being useless if the previous others are badly set, 
-we will use the following order:
-\begin{enumerate}
-    \item Learning Rate: precision maximum over an infinite of values, it makes the global maxima search very fragile.
-    \item Hidden Layer Size: the bigger the better
-    \item Epochs: most of the time, much more than epochs do not change accuracy that much,  because of overfitting.
-\end{enumerate}
+the biggest challenge being to constantly adpapt the learning rate,
+we conclude that a biggest network allowing high and fast performance (to 90\% accuracy after 1 epoch),
+smallest batching catalyzing that behavior on noise and
+a learning rate adapted to network and batch size, and dynamically to loss.
+should be preffered.
+That having been said, many other techiques can be added to improve the model's time complexity. 
 \subsection{Tools}
-\subsubsection{Assistance}
 \begin{itemize}
     \item ChatGPT
 \end{itemize}
 \subsection{Future Work}
 We will continue Implementing advanced techniques like filtering images on sparse matrices,
-dropout and batch normalization at different intensities
+biases, batch normalization- and dropout regularization- at different intensities
 at particular network states and exploring convolutional models and
-deeper pattern finding and evolving architectures.
+deeper pattern finding architectures.
+
+The project is available on \href{https://github.com/nobourge/artificial-intelligence-machine-learning}{https://github.com/nobourge/artificial-intelligence-machine-learning}.
 
 
-\section{References}
-% Include your references here
-\bibliographystyle{plain}
-\bibliography{references} % references.bib should be the name of your BibTeX file
+% \section{References}
+% % Include your references here
+% %links:
+
+% https://medium.com/france-school-of-ai/math%C3%A9matiques-des-r%C3%A9seaux-de-neurones-code-python-613d8e83541
+% https://lrpserver.hhi.fraunhofer.de/handwriting-classification
+
+% \bibliographystyle{plain}
+% \bibliography{references} % references.bib should be the name of your BibTeX file
 
 \end{document}
